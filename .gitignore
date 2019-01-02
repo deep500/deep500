@@ -102,3 +102,19 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+*.iml
+.idea
+venv
+*.png
+*.onnx
+*.log
+.vs/
+__pycache__/
+*_build/
+*_src/
+*~
+*_build?/
+*.csv
+*.out
+.*.sh
