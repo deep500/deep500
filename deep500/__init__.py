@@ -62,13 +62,12 @@ from .lv2.validation import test_optimizer, test_training, test_sampler
 ####################################
 # Level 3: Distributed Training
 
-from .lv3.distributed_sampler import DistributedSampler, PartitionedDistributedSampler
-
 # MPI and related optimizers
 try:
     from deep500.utils.mpi_helper import mpi_fork, mpi_end_barrier
 
     from .lv3.communication import CommunicationNetwork
+    from .lv3.distributed_sampler import DistributedSampler, PartitionedDistributedSampler
     from .lv3.distributed_optimizer import DistributedOptimizer
 except (ImportError, ModuleNotFoundError):
     pass  # Proper warnings are printed within imported modules
