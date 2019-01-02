@@ -70,5 +70,5 @@ try:
 
     from .lv3.communication import CommunicationNetwork
     from .lv3.distributed_optimizer import DistributedOptimizer
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     pass  # Proper warnings are printed within imported modules
