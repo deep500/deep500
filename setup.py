@@ -33,4 +33,9 @@ setup(
         'tqdm',
         'cmake',
     ],
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: OS Independent",
+    ],
 )
