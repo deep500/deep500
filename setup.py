@@ -10,13 +10,18 @@ cpp_files = [
     for f in glob.glob(d500_path + 'frameworks/reference/custom_operators/cpp/**/*', recursive=True)
 ]
 
+with open("README.md", "r") as fp:
+    long_description = fp.read()
+
 setup(
     name='deep500',
-    version='0.4.0',
-    url='https://www.deep500.org/',
+    version='0.2.0',
+    url='https://github.com/deep500/deep500',
     author='SPCL @ ETH Zurich',
     author_email='talbn@inf.ethz.ch',
     description='The deep learning metaframework',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={
         '': [
@@ -34,8 +39,11 @@ setup(
         'cmake',
     ],
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BSD License",
-        "Operating System :: OS Independent",
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
     ],
 )

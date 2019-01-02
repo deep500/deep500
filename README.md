@@ -2,7 +2,7 @@ Deep500: A Deep Learning Meta-Framework and HPC Benchmarking Library
 ====================================================================
 
 <p align="center">
-	<img src="d500.png" /><br />
+	<img src="https://raw.githubusercontent.com/deep500/deep500/master/d500.png" /><br />
     (or: 500 ways to train deep neural networks)
 </p>
 
@@ -18,11 +18,11 @@ Using Deep500, you automatically gain:
 
 ## Installation
 
-Using pip: `pip install git+https://github.com/deep500/deep500.git`
+Using pip: `pip install deep500`
 
 ## Usage
 
-See the [tutorials](tutorials/README.md).
+See the [tutorials](https://github.com/deep500/deep500/tree/master/tutorials).
 
 ## Requirements
  * Python 3.5 or later
@@ -43,4 +43,4 @@ Deep500 is an open-source, community driven project. We are happy to accept Pull
  
 ## License
 
-Deep500 is published under the New BSD license, see [LICENSE](LICENSE).
+Deep500 is published under the New BSD license, see [LICENSE](https://github.com/deep500/deep500/blob/master/LICENSE).
