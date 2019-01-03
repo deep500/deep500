@@ -1,6 +1,6 @@
 import time
 import tensorflow as tf
-from paper_scripts import deepbench
+import deepbench
 
 AVG_OVER = 10
 RUNS = 30

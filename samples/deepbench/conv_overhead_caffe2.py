@@ -2,7 +2,7 @@ import time
 import numpy as np
 from caffe2.proto import caffe2_pb2
 from caffe2.python import workspace, core, model_helper, utils, brew
-from paper_scripts import deepbench
+import deepbench
 
 AVG_OVER = 100
 RUNS = 30
@@ -85,7 +85,7 @@ for test in deepbench.conv_training_set:
                          strides=[test.hstride, test.wstride],
                          pads=[test.pad_h, test.pad_w] * 2)
 
-            times, = d5cf2.test_nativeop_forward(m, [("X", X)], [("Y", reference_output)],
+            times, = d5cf2.test_nativeop_forward(m, [("X", X)], [("Y", None)],
                                                  metrics=[d5.WallclockTime(RUNS * AVG_OVER, AVG_OVER)])
     except Exception as ex:
         print('Exception:', ex)

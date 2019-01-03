@@ -1,7 +1,7 @@
 import time
 import torch
 import numpy as np
-from paper_scripts import deepbench
+import deepbench
 
 AVG_OVER = 100
 RUNS = 30
@@ -80,7 +80,7 @@ for test in deepbench.conv_training_set:
         model.bias = torch.nn.Parameter(var_B)
 
         times, = \
-            d5pt.test_nativeop_forward(model, [var_X], [reference_output],
+            d5pt.test_nativeop_forward(model, [var_X], [None],
                                        metrics=[d5.WallclockTime(RUNS*AVG_OVER, AVG_OVER)])
     except Exception as ex:
         print('Exception:', ex)

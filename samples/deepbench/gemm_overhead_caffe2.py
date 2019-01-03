@@ -1,7 +1,7 @@
 import time
 from caffe2.proto import caffe2_pb2
 from caffe2.python import workspace, core, model_helper
-from paper_scripts import deepbench
+import deepbench
 import numpy as np
 
 AVG_OVER = 10

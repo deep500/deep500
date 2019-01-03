@@ -1,7 +1,7 @@
 import time
 import torch
 import numpy as np
-from paper_scripts import deepbench
+import deepbench
 
 AVG_OVER = 100
 RUNS = 30

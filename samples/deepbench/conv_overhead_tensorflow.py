@@ -1,6 +1,6 @@
 import time
 import tensorflow as tf
-from paper_scripts import deepbench
+import deepbench
 
 AVG_OVER = 10
 RUNS = 30
@@ -80,7 +80,7 @@ for test in deepbench.conv_training_set:
                                            kernel_initializer=tf.constant_initializer(W))
 
         times, = \
-            d5tf.test_nativeop_forward(cnv2d, [var_X], [reference_output],
+            d5tf.test_nativeop_forward(cnv2d, [var_X], [None],
                                        metrics=[d5.WallclockTime(RUNS*AVG_OVER, AVG_OVER)])
     except Exception as ex:
         print('Exception:', ex)
