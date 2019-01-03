@@ -27,11 +27,9 @@ class SummaryGeneratorEvent(RunnerEvent, OptimizerEvent, ExecutorEvent):
 
         if (runner.train_set.dataset and runner.network_output and 
                 training_stats.current_summary.wrong is not None):
+            ds_len = len(runner.train_set) * runner.train_set.batch_size
             training_stats.current_summary.accuracy = (
-                100 / len(runner.train_set) * (
-                    len(runner.train_set) - 
-                    training_stats.current_summary.wrong))
-
+                100 / ds_len * (ds_len - training_stats.current_summary.wrong))
 
         training_stats.train_summaries.append(training_stats.current_summary)
 
@@ -101,10 +99,9 @@ class SummaryGeneratorEvent(RunnerEvent, OptimizerEvent, ExecutorEvent):
         training_stats.current_summary.time_used = time.time() - training_stats.current_summary.start_time
         
         if runner.test_set.dataset and runner.network_output:
+            ds_len = len(runner.test_set) * runner.test_set.batch_size
             training_stats.current_summary.accuracy = (
-                100 / len(runner.test_set) * (
-                    len(runner.test_set) - 
-                    training_stats.current_summary.wrong))
+                100 / ds_len * (ds_len - training_stats.current_summary.wrong))
 
         training_stats.test_summaries.append(training_stats.current_summary)
 

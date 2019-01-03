@@ -1,4 +1,5 @@
 from caffe2.proto import caffe2_pb2
+from caffe2.python import core
 
 import deep500 as d5
 
