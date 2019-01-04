@@ -71,3 +71,5 @@ try:
     from .lv3.distributed_optimizer import DistributedOptimizer
 except (ImportError, ModuleNotFoundError):
     pass  # Proper warnings are printed within imported modules
+
+from .lv3.metrics import CommunicationVolume
