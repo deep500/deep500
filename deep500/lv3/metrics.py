@@ -6,7 +6,7 @@ from deep500.utils.metric import TestMetric
 # Adapted from Fred Cirera's human-readable file size printer
 # https://web.archive.org/web/20111010015624/http://blogmag.net/blog/read/38/Print_human_readable_file_size
 def _sizeof_fmt(num):
-    for unit in ['','KiB','MiB','GiB','TiB','PiB','EiB','ZiB']:
+    for unit in ['B','KiB','MiB','GiB','TiB','PiB','EiB','ZiB']:
         if abs(num) < 1024.0:
             return "%3.1f%s" % (num, unit)
         num /= 1024.0
