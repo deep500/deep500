@@ -8,9 +8,9 @@ from deep500.utils.metric import TestMetric
 def _sizeof_fmt(num):
     for unit in ['','KiB','MiB','GiB','TiB','PiB','EiB','ZiB']:
         if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
+            return "%3.1f%s" % (num, unit)
         num /= 1024.0
-    return "%.1f%s%s" % (num, 'YiB', suffix)
+    return "%.1f%s" % (num, 'YiB')
 
 class CommunicationVolume(TestMetric):
     """ Estimates communication volume of a node by checking transferred byte
