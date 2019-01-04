@@ -70,7 +70,7 @@ class CommunicationVolume(TestMetric):
     def measure_summary(self, *args) -> str:
         """ Outputs the total number of bytes transferred from/to this node. """
         nics = self.measure()
-        total_bytes = sum(v[0] + v[1] for v in di.values())
+        total_bytes = sum(v[0] + v[1] for v in nics.values())
         if not self._pretty:
             return str(total_bytes)
         
