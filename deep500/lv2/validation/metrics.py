@@ -3,7 +3,7 @@ import numpy as np
 
 from deep500.utils.metric import TestMetric
 from deep500.lv2.dataset import Dataset
-from deep500.lv2.event import RunnerEvent
+from deep500.lv2.event import RunnerEvent, SamplerEvent
 from deep500.lv2.summaries import TrainingStatistics
 
 def DefaultTrainingMetrics():
@@ -16,7 +16,8 @@ class TrainingAccuracy(RunnerEvent, TestMetric):
         self.accuracy = -1.0
 
     def after_training(self, runner, training_stats: TrainingStatistics):
-        self.accuracy = training_stats.train_summaries[-1].accuracy
+        if len(training_stats.train_summaries) > 0:
+            self.accuracy = training_stats.train_summaries[-1].accuracy
 
     def measure(self, unused_inputs, unused_outputs, unused_ref) -> float:
         return self.accuracy
@@ -28,7 +29,8 @@ class TestAccuracy(RunnerEvent, TestMetric):
         self.accuracy = -1.0
 
     def after_training(self, runner, training_stats: TrainingStatistics):
-        self.accuracy = training_stats.test_summaries[-1].accuracy
+        if len(training_stats.test_summaries) > 0:
+            self.accuracy = training_stats.test_summaries[-1].accuracy
 
     def measure(self, unused_inputs, unused_outputs, unused_ref) -> float:
         return self.accuracy
@@ -90,3 +92,27 @@ class DatasetBias(TestMetric):
 
     def measure(self, *unused) -> List[int]:
         return self.hist
+
+class SamplerEventMetric(SamplerEvent, TestMetric):
+    """ A metric wrapper that invokes begin() and end() upon sampling.
+        Example use: measuring sampler latency as part of training.
+    """
+    def __init__(self, metric: TestMetric):
+        self.metric = metric
+
+    def before_sampling(self, sampler, batch_size):
+        self.metric.begin(batch_size)
+
+    def after_sampling(self, sampler, resulting_batch_size):
+        self.metric.end(resulting_batch_size)
+
+    @property
+    def reruns(self):
+        return self.metric.reruns
+
+    def measure(self, *args):
+        return self.metric.measure(*args)
+
+    def measure_summary(self, *args):
+        return self.metric.measure_summary(*args)
+

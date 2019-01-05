@@ -26,8 +26,11 @@ if __name__ == '__main__':
     dsname = 'mnist' if len(sys.argv) < 4 else sys.argv[3]
     
     # Initialize communication
-    comm = d5.CommunicationNetwork()
-    print('Detected %d ranks, I am rank %d' % (comm.size, comm.rank))
+    if distoptname != 'local':
+        comm = d5.CommunicationNetwork()
+        print('Detected %d ranks, I am rank %d' % (comm.size, comm.rank))
+    else:
+        comm = None
  
     # Create CNN using ONNX
     ds_cls, ds_c, ds_h, ds_w = d5ds.dataset_shape(dsname)
@@ -74,23 +77,25 @@ if __name__ == '__main__':
         train_sampler = d5.DistributedSampler(
             d5.ShuffleSampler(train_set, BATCH_SIZE), comm)
 
-    if comm.rank == 0:
+    if comm is None or comm.rank == 0:
         # No need to distribute test_set
         test_sampler = d5.ShuffleSampler(test_set, BATCH_SIZE)
     else:
         # No need to test if not rank 0
         test_sampler = None
 
-    # Create runner (training/test manager)
-    runner = d5.Runner(train_sampler, test_sampler, executor, optimizer,
-                        OUTPUT_NODE)
     #############################
+
+    # Events: Only print progress on rank 0
+    events = d5.DefaultRunnerEvents(MAX_EPOCHS) if comm is None or comm.rank == 0 else []
+
+    # Metrics: Add communication volume
+    metrics = d5.DefaultTrainingMetrics() + [d5.CommunicationVolume()]
+
+    # Run distributed training
+    d5.test_training(executor, train_sampler, test_sampler, optimizer, 
+                     MAX_EPOCHS, BATCH_SIZE, OUTPUT_NODE, events=events, 
+                     metrics=metrics)
     
-    # Only print progress on rank 0
-    events = d5.DefaultRunnerEvents(MAX_EPOCHS) if comm.rank == 0 else []
-
-    # Run distributed training/test loop
-    runner.run_loop(MAX_EPOCHS, events=events)
-
     # Wait for everyone to finish and finalize MPI if necessary
     d5.mpi_end_barrier()

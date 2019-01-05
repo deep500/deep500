@@ -80,15 +80,7 @@ class NumpyDataset(Dataset):
         else:
             self.label_node = None
             self.labels = None
-        
-    # TODO(talbn): A node-based interface to read from datasets
-    def as_operator(self, batch_size):
-        """ Returns a CustomOperator that generates the input and (optionally) label,
-            to streamline data serving.
-            @param batch_size The number of images to return
-        """
-        raise NotImplementedError
-        
+
     def add_input_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
         """
         Apply a transformation (e.g., decoding, data augmentation) on each input before
