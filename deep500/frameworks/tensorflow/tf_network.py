@@ -145,6 +145,8 @@ class TensorflowNetwork(d5.Network):
         self.tensors[name] = tensor
 
     def fetch_internal_tensor(self, name):
+        if isinstance(name, (tf.Tensor, tf.Operation)):
+            return name
         return self.tensors.get(name) if name in self.tensors else self.variables[name]
 
     def fetch_internal_tensors(self, names):
