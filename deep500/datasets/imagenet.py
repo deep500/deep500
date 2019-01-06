@@ -1,4 +1,5 @@
 import os
+import random
 from typing import List
 
 from deep500.lv2.dataset import Dataset
@@ -22,31 +23,35 @@ _B_MEAN = 103.94
 _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 _RESIZE_MIN = 256
 
-def imagenet_shape():
-    return (_NUM_CLASSES, _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS)
+def imagenet_shape(is_nchw=True):
+    if is_nchw:
+        return (_NUM_CLASSES, _NUM_CHANNELS, _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE)
+    else:
+        return (_NUM_CLASSES, _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS)
 
 class TFRecordD500Dataset(Dataset):
     def __init__(self, files: List[str], sample_node: str, label_node: str,
                  total_samples: int, batch_size: int, 
                  shuffle: bool = True, shuffle_buffer: int = _SHUFFLE_BUFFER,
-                 augment: bool = True, seed: int = None):
+                 augment: bool = True, is_nchw: bool = True, seed: int = None):
         try:
             import tensorflow as tf
         except (ImportError, ModuleNotFoundError) as ex:
             raise ImportError('Cannot use TFRecordDataset without TensorFlow: %s' % str(ex))
 
         # Create a TensorFlow session without consuming GPU memory
-        config = tf.ConfigProto(device_count={'GPU': 0})
+        config = tf.ConfigProto()
         config.gpu_options.allow_growth=True
         self.sess = tf.Session(config=config)
 
+        random.shuffle(files)
         dataset = tf.data.TFRecordDataset(files)
         dataset = dataset.prefetch(buffer_size=shuffle_buffer)
         if shuffle:
             dataset = dataset.shuffle(buffer_size=shuffle_buffer, seed=seed)
         dataset = dataset.apply(
             tf.contrib.data.map_and_batch(
-                lambda value: _parse_example_proto(value, augment),
+                lambda value: _parse_example_proto(value, augment, is_nchw),
                 batch_size=batch_size,
                 num_parallel_batches=1,
             drop_remainder=True))
@@ -56,15 +61,15 @@ class TFRecordD500Dataset(Dataset):
         self.record_iter = dataset.make_initializable_iterator()
         self.riter_op = self.record_iter.get_next()
         self.samples = total_samples
-        self.snode = sample_node
-        self.lnode = label_node
+        self.input_node = sample_node
+        self.label_node = label_node
 
     def __len__(self):
         return self.samples
 
     def __getitem__(self, index):
         images, labels = self.sess.run(self.riter_op)
-        return {self.snode: images, self.lnode: labels}
+        return {self.input_node: images, self.label_node: labels}
 
     def reset(self):
         self.sess.run(self.record_iter.initializer)
@@ -85,6 +90,7 @@ class TFRecordImageNetSampler(Sampler):
         shuffle: bool = True,
         shuffle_buffer: int = _SHUFFLE_BUFFER,
         augment: bool = True,
+        is_nchw: bool = True,
         seed: int=None,
         events: List[SamplerEvent] = []
     ):
@@ -105,7 +111,7 @@ class TFRecordImageNetSampler(Sampler):
 
         self.dataset = TFRecordD500Dataset(files, sample_node, label_node, 
                                            num_images, batch_size, shuffle,
-                                           shuffle_buffer, augment, seed)
+                                           shuffle_buffer, augment, is_nchw, seed)
         self.batch_size = batch_size
         self.seed = seed
         self.events = events
@@ -145,7 +151,7 @@ class TFRecordImageNetSampler(Sampler):
 # Parses the TF records
 # Adapted from https://www.github.com/tensorflow/models
 
-def _parse_example_proto(example_serialized, augment):
+def _parse_example_proto(example_serialized, augment, is_nchw):
   """Parses an Example proto containing a training example of an image.
 
   The output of the build_image_data.py image preprocessing script is a dataset
@@ -230,7 +236,11 @@ def _parse_example_proto(example_serialized, augment):
 
   image.set_shape([_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
-  return _mean_image_subtraction(image, _CHANNEL_MEANS, _NUM_CHANNELS), label
+  image = _mean_image_subtraction(image, _CHANNEL_MEANS, _NUM_CHANNELS)
+  if is_nchw:
+      image = tf.transpose(image, [2, 0, 1])
+
+  return image, label
 
 
 
