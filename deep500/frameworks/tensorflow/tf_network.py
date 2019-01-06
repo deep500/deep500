@@ -154,7 +154,7 @@ class TensorflowNetwork(d5.Network):
         
     def get_input_nodes(self) -> List[str]:
         graph = tf.get_default_graph()
-        return [n.name for n in graph.as_graph_def().node if len(n.input) == 0 and n.op == 'Placeholder']
+        return [n.name + ':0' for n in graph.as_graph_def().node if len(n.input) == 0 and n.op == 'Placeholder']
 
     def get_output_nodes(self) -> List[str]:
         return self.output_names

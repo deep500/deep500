@@ -129,3 +129,5 @@ class TensorflowNativeGraphExecutor(TensorflowGraphExecutor):
         self.network.add_output(loss_node.name)
         self.network.variables = {v.name: v for v in tf.trainable_variables()}
         self.network.tensors = {name: tf.get_default_graph().get_tensor_by_name(name) for name in self.network.output_names}
+        self.network.tensors.update({name: tf.get_default_graph().get_tensor_by_name(name) for name in self.network.get_input_nodes()})
+
