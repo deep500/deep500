@@ -33,7 +33,10 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
         # map string to tensor input
-        input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
+        if input:
+            input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
+        else:
+            input_dict = None
 
         if not self.network.vars_initialized:
             init = tf.global_variables_initializer()
@@ -59,7 +62,10 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         loss = self.network.fetch_internal_tensor(y)
 
         # map string to tensor input
-        input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
+        if input:
+            input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
+        else:
+            input_dict = None
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
         # Here we provide gradients in numpy form so that we can work on them externally
@@ -96,7 +102,10 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         loss = self.network.fetch_internal_tensor(y)
 
         # map string to tensor input
-        input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
+        if input:
+            input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
+        else:
+            input_dict = None
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
         if not self.network.vars_initialized:

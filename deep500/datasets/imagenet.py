@@ -115,6 +115,7 @@ class TFRecordImageNetSampler(Sampler):
         self.batch_size = batch_size
         self.seed = seed
         self.events = events
+        self.as_op = False
         self.reset()
 
     def as_operator(self):
@@ -122,12 +123,16 @@ class TFRecordImageNetSampler(Sampler):
             to streamline data serving.
         """
         # TODO(talbn): Add event processing as tf.py_func nodes (especially the "before sampling" event)
+        self.as_op = True
         return self.dataset.records.make_one_shot_iterator().get_next()
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        if self.as_op:
+            return None
+
         for event in self.events: event.before_sampling(self, self.batch_size)
         sample = self.dataset[0] # Returns a minibatch in any case
         for event in self.events: event.after_sampling(self, self.batch_size)
