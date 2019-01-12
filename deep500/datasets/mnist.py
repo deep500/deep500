@@ -87,7 +87,7 @@ def _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=True
     return (NumpyDataset(Input(data_node_name, train_img), Input(label_node_name, train_lbl)), 
             NumpyDataset(Input(data_node_name, test_img), Input(label_node_name, test_lbl)))
 
-def load_mnist(data_node_name, label_node_name, normalize=True) -> Tuple[Dataset, Dataset]:
+def load_mnist(data_node_name, label_node_name, *args, normalize=True, **kwargs) -> Tuple[Dataset, Dataset]:
     """ Returns the training and testing Dataset objects for MNIST.
         @param data_node_name The graph node name for the data inputs.
         @param label_node_name The graph node name for the ground-truth labels.
@@ -98,7 +98,7 @@ def load_mnist(data_node_name, label_node_name, normalize=True) -> Tuple[Dataset
     downloaded_data = download_mnist_and_get_file_paths()
     return _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=normalize)
 
-def load_fashion_mnist(data_node_name, label_node_name, normalize=True) -> Tuple[Dataset, Dataset]:
+def load_fashion_mnist(data_node_name, label_node_name, *args, normalize=True, **kwargs) -> Tuple[Dataset, Dataset]:
     """ Returns the training and testing Dataset objects for Fashion MNIST.
         @param data_node_name The graph node name for the data inputs.
         @param label_node_name The graph node name for the ground-truth labels.

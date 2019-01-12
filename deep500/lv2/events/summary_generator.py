@@ -46,7 +46,7 @@ class SummaryGeneratorEvent(RunnerEvent, OptimizerEvent, ExecutorEvent):
         training_stats.n_batches_used += 1
 
         # Accuracy for classification
-        if self.runner.train_set.dataset and self.runner.network_output:
+        if self.inp and self.runner.train_set.dataset and self.runner.network_output:
             y_corr = self.inp[self.runner.train_set.dataset.label_node]
             y_network = output[self.runner.network_output]
         
@@ -81,7 +81,7 @@ class SummaryGeneratorEvent(RunnerEvent, OptimizerEvent, ExecutorEvent):
             training_stats.current_summary.avg_time_inference = ((n - 1) / n) * avg + (1 / n) * used_time
 
         # Accuracy for classification
-        if runner.test_set.dataset and runner.network_output:
+        if self.inp and runner.test_set.dataset and runner.network_output:
             y_corr = self.inp[runner.test_set.dataset.label_node]
             y_network = output[runner.network_output]
 

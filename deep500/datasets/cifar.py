@@ -135,8 +135,8 @@ def _load_cifar(is_cifar100, input_node_name, label_node_name, normalize=True, f
             NumpyDataset(Input(input_node_name, test_img), Input(label_node_name, test_lbl)))
     
     
-def load_cifar10(input_node_name, label_node_name, normalize=True, folder=''):
+def load_cifar10(input_node_name, label_node_name, *args, normalize=True, folder='', **kwargs):
     return _load_cifar(False, input_node_name, label_node_name, normalize, folder)
 
-def load_cifar100(input_node_name, label_node_name, normalize=True, folder=''):
+def load_cifar100(input_node_name, label_node_name, *args, normalize=True, folder='', **kwargs):
     return _load_cifar(True, input_node_name, label_node_name, normalize, folder)    

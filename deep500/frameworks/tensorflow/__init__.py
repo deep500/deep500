@@ -4,7 +4,7 @@ from .tf_network import TensorflowNetwork
 from .tf_visitor_impl import TensorflowVisitor
 from .op_validation import test_nativeop_forward, test_nativeop_gradient
 
-from .tf_graph_executor import TensorflowGraphExecutor
+from .tf_graph_executor import *
 
 from .tf_optimizers import *
 from .tf_distributed_optimizer import HorovodDistributedOptimizer
