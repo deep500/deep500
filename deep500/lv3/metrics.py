@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from typing import Dict
 from deep500.utils.metric import TestMetric
@@ -17,6 +18,11 @@ class CommunicationVolume(TestMetric):
         statistics on the NICs. Currently uses ifstat for Linux and Mac OS. """
         
     def __init__(self, tool_path='/usr/sbin/ifstat', prettyprint=True):
+        # Try using which instead
+        if not os.path.exists(tool_path):
+            tool_path = shutil.which('ifstat')
+            if tool_path is None:
+                raise FileNotFoundError('Cannot find the "ifstat" tool')
         if os.name == 'nt':
             raise NotImplementedError('Windows is not supported with CommunicationVolume')
         self._tool = tool_path
