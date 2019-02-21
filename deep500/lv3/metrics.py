@@ -46,6 +46,14 @@ class CommunicationVolume(TestMetric):
     def end(self, *args):
         # Run tool again to get the total bytes sent/received 
         self._end_m = self.runproc()
+
+    @property
+    def requires_inputs(self) -> bool:
+        return False
+
+    @property
+    def requires_outputs(self) -> bool:
+        return False
         
     def _parse_ifstat(self, output):
         # Parse an output ifstat string

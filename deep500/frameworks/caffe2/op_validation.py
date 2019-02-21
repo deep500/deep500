@@ -46,11 +46,17 @@ def test_nativeop_forward(
         metric.end(outputs)
 
     for metric in rerun_metrics:
-        for i in range(metric.reruns):
-            metric.begin(inputs)
-            workspace.RunNet(model.net)
-            outputs = workspace.FetchBlobs([name for (name, out) in reference_outputs])
-            metric.end(outputs)
+        if not metric.requires_outputs:
+            for i in range(metric.reruns):
+                metric.begin(inputs)
+                workspace.RunNet(model.net)
+                metric.end()
+        else:
+            for i in range(metric.reruns):
+                metric.begin(inputs)
+                workspace.RunNet(model.net)
+                outputs = workspace.FetchBlobs([name for (name, out) in reference_outputs])
+                metric.end(outputs)
 
     if not isinstance(outputs, (list, tuple)):
         outputs = [outputs]

@@ -29,6 +29,18 @@ class TestMetric(object):
         """
         return 0
 
+    @property
+    def requires_inputs(self) -> bool:
+        """ Set to True if this metric depends on the inputs of the measured
+            method in the `begin()` call. """
+        return True
+
+    @property
+    def requires_outputs(self) -> bool:
+        """ Set to True if this metric depends on the outputs of the measured
+            method in the `end()` call. """
+        return True
+
     def measure(self, inputs: List[Any], outputs: List[Any],
                 reference_outputs: List[Any]) -> Any:
         """ Returns the metric's results after the full test ends.

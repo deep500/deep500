@@ -260,6 +260,14 @@ class WallclockTime(TestMetric):
     def reruns(self):
         return self._reruns
 
+    @property
+    def requires_inputs(self) -> bool:
+        return False
+
+    @property
+    def requires_outputs(self) -> bool:
+        return False
+
     def begin(self, inputs):
         if self._t % self._avg_over == 0:
             self._begintime.append(time.time())
