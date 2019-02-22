@@ -268,11 +268,11 @@ class WallclockTime(TestMetric):
     def requires_outputs(self) -> bool:
         return False
 
-    def begin(self, inputs):
+    def begin(self, *args):
         if self._t % self._avg_over == 0:
             self._begintime.append(time.time())
 
-    def end(self, outputs):
+    def end(self, *args):
         self._t += 1
         if self._t % self._avg_over == 0:
             self._endtime.append(time.time())
