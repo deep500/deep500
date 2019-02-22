@@ -106,7 +106,7 @@ class ThreeStepOptimizer(FirstOrderOptimizer, metaclass=abc.ABCMeta):
         for (param_name, grad_name) in gradients:
             param, grad = self.executor.network.fetch_tensors([param_name, grad_name])
             param = self.update_rule(grad, param, param_name)
-            self.executor.network.feed_tensor(param_name, param)
+            self.executor.network.feed_tensor(param_name, param, is_param=True)
 
         return outputs
 
@@ -140,6 +140,6 @@ class UpdateRuleOptimizer(ThreeStepOptimizer, metaclass=abc.ABCMeta):
         for (param_name, grad_name) in gradients:
             param, grad = self.executor.network.fetch_tensors([param_name, grad_name])
             param = self.update_rule(grad, param, param_name)
-            self.executor.network.feed_tensor(param_name, param)
+            self.executor.network.feed_tensor(param_name, param, is_param=True)
 
         return outputs
