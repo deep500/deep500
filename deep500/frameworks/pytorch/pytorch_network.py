@@ -34,7 +34,7 @@ class PyTorchNetwork(d5.Network):
             self.variables[grad_param] = self.variables[param].grad
 
     def gradient(self, y: str = 'loss'):
-        return [(param, param_grad) for (param, param_grad) in self.grad_params.items()]
+        return list(self.grad_params.items())
 
     def add_output(self, output: str):
         self.outputs[output] = output
@@ -45,7 +45,7 @@ class PyTorchNetwork(d5.Network):
     def fetch_tensors(self, names):
         tensors = []
         for each_name in names:
-            var = self.variables.get(each_name)
+            var = self.variables[each_name]
             if var is None:
                 print('Trying to fetch a None tensor', each_name)
                 tensors.append(None)

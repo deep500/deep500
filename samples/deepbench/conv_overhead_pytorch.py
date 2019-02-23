@@ -6,7 +6,7 @@ import deepbench
 AVG_OVER = 100
 RUNS = 30
 
-print('############ Matrix Multiplication ############')
+print('############ Convolution ############')
 print('Vanilla Pytorch')
 
 dev = torch.device('cuda')

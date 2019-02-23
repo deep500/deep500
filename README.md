@@ -2,7 +2,7 @@ Deep500: A Deep Learning Meta-Framework and HPC Benchmarking Library
 ====================================================================
 
 <p align="center">
-	<img src="https://raw.githubusercontent.com/deep500/deep500/master/d500.png" /><br />
+	<img src="https://www.deep500.org/deep500.svg" /><br />
     (or: 500 ways to train deep neural networks)
 </p>
 
@@ -36,6 +36,20 @@ See the [tutorials](https://github.com/deep500/deep500/tree/master/tutorials).
  * Tensorflow
  * Pytorch
  * Caffe2
+
+## Reference
+
+If you use this meta-framework please cite it as:
+```bibtex
+@inproceedings{deep500,
+  author={T. Ben-Nun and M. Besta and S. Huber and A. N. Ziogas and D. Peter and T. Hoefler},
+  title={{A Modular Benchmarking Infrastructure for High-Performance and Reproducible Deep Learning}},
+  year={2019},
+  month={May},
+  publisher={IEEE},
+  note={The 33rd IEEE International Parallel \& Distributed Processing Symposium (IPDPS'19)},
+}
+```
 
 ## Contributing
 

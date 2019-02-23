@@ -8,7 +8,7 @@ AVG_OVER = 100
 RUNS = 30
 
 device_option = core.DeviceOption(caffe2_pb2.CUDA)  # device = core.DeviceOption(caffe2_pb2.CPU)
-print('############ Matrix Multiplication ############')
+print('############ Convolution ############')
 print('Vanilla Caffe2')
 
 # Native Caffe2 results
