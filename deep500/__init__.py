@@ -72,4 +72,4 @@ try:
 except (ImportError, ModuleNotFoundError):
     pass  # Proper warnings are printed within imported modules
 
-from .lv3.metrics import CommunicationVolume
+from .lv3.metrics import CommunicationVolume, MPIProfiling

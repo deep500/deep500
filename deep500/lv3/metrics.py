@@ -90,3 +90,38 @@ class CommunicationVolume(TestMetric):
         
         # Pretty-print
         return _sizeof_fmt(total_bytes)
+
+
+class MPIProfiling(TestMetric):
+    """ Enables MPI profiling for the duration of the measured code. """
+    def __init__(self):
+        pass
+
+    def begin(self, *args):
+        # Import MPI4Py without initializing it
+        try:
+            import mpi4py.rc
+            mpi4py.rc.initialize = False
+            from mpi4py import MPI
+        except (ImportError, ModuleNotFoundError):
+            print('ERROR: mpi4py not available, profiling metric disabled')
+            raise
+        MPI.Pcontrol(1) # Enable profiling
+
+    def end(self, *args):
+        # Import MPI4Py without initializing it
+        try:
+            import mpi4py.rc
+            mpi4py.rc.initialize = False
+            from mpi4py import MPI
+        except (ImportError, ModuleNotFoundError):
+            print('ERROR: mpi4py not available, profiling metric disabled')
+            raise
+        MPI.Pcontrol(2) # Flush buffers
+        MPI.Pcontrol(0) # Disable profiling
+
+    def measure(self, *args):
+        return None
+
+    def measure_summary(self, *args):
+        return 'N/A'
