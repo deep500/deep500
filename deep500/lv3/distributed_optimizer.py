@@ -8,4 +8,5 @@ class DistributedOptimizer(FirstOrderOptimizer):
             comm = CommunicationNetwork()
         self.communication = comm
         self.base_optimizer = base_optimizer
+        self.loss = base_optimizer.loss
 

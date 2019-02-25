@@ -12,9 +12,9 @@ class ConsistentParameterServer(DistributedOptimizer):
     def step(self, inputs):
         self.base_optimizer.new_input()
         [self.base_optimizer.prepare_param(param) for param in self.network.get_params()]
-        outputs = self.executor.inference_and_backprop(inputs)
+        outputs = self.executor.inference_and_backprop(inputs, self.base_optimizer.loss)
 
-        for (param_name, grad_name) in self.network.gradient():
+        for (param_name, grad_name) in self.network.gradient(self.base_optimizer.loss):
             param, grad = self.network.fetch_tensors([param_name, grad_name])
 
             grad = self.communication.gather_at_root(grad)
@@ -37,8 +37,8 @@ class InconsistentParameterServer(DistributedOptimizer):
             self.base_optimizer.new_input()
             for param in self.network.get_params():
                 self.base_optimizer.prepare_param(param)
-            output = self.executor.inference_and_backprop(inputs)
-            for k, (param_name, grad_name) in enumerate(self.network.gradient()):
+            output = self.executor.inference_and_backprop(inputs, self.base_optimizer.loss)
+            for k, (param_name, grad_name) in enumerate(self.network.gradient(self.base_optimizer.loss)):
                 param, grad = self.network.fetch_tensors([param_name, grad_name])
                 self.communication.send_to_root(grad, tag=k)
                 param = self.communication.wait_for_root()
@@ -53,8 +53,8 @@ class InconsistentParameterServer(DistributedOptimizer):
                 self.base_optimizer.new_input()
                 for param in self.network.get_params():
                     self.base_optimizer.prepare_param(param)
-                output = self.executor.inference_and_backprop(inputs)
-                gradients = self.network.gradient()
+                output = self.executor.inference_and_backprop(inputs, self.base_optimizer.loss)
+                gradients = self.network.gradient(self.base_optimizer.loss)
                 for k, (param_name, grad_name) in enumerate(gradients):
                     grad, source, tag = self.communication.wait_for_any_rank()
                     param_name = gradients[tag][0]
@@ -72,8 +72,8 @@ class ConsistentDecentralized(DistributedOptimizer):
         self.base_optimizer.new_input()
         for param in self.network.get_params():
             self.base_optimizer.prepare_param(param)
-        output = self.executor.inference_and_backprop(inputs)
-        gradients = self.network.gradient()
+        output = self.executor.inference_and_backprop(inputs, self.base_optimizer.loss)
+        gradients = self.network.gradient(self.base_optimizer.loss)
         for param_name, grad_name in gradients:
             param, grad = self.network.fetch_tensors([param_name, grad_name])
             grad = self.communication.sync_all(grad) / self.communication.size
@@ -89,8 +89,8 @@ class ModelAverageDecentralized(DistributedOptimizer):
         self.base_optimizer.new_input()
         for param in self.network.get_params():
             self.base_optimizer.prepare_param(param)
-        output = self.executor.inference_and_backprop(inputs)
-        gradients = self.network.gradient()
+        output = self.executor.inference_and_backprop(inputs, self.base_optimizer.loss)
+        gradients = self.network.gradient(self.base_optimizer.loss)
         for param_name, grad_name in gradients:
             param, grad = self.network.fetch_tensors([param_name, grad_name])
             param = self.base_optimizer.update_rule(grad, param, param_name)
@@ -107,8 +107,8 @@ class ConsistentNeighbors(DistributedOptimizer):
         self.base_optimizer.new_input()
         for param in self.network.get_params():
             self.base_optimizer.prepare_param(param)
-        output = self.executor.inference_and_backprop(inputs)
-        gradients = self.network.gradient()
+        output = self.executor.inference_and_backprop(inputs, self.base_optimizer.loss)
+        gradients = self.network.gradient(self.base_optimizer.loss)
         for param_name, grad_name in gradients:
             param, grad = self.network.fetch_tensors([param_name, grad_name])
             grad = self.communication.reduce_from_neighbors(grad) / 3

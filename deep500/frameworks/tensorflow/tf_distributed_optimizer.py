@@ -7,11 +7,6 @@ class HorovodDistributedOptimizer(TFOptimizer):
     def __init__(self, optimizer: TFOptimizer, comm=None):
         super().__init__(optimizer.executor, optimizer.loss)
 
-        if comm is None:
-            comm = CommunicationNetwork()
-        self.communication = comm
-        self.original_optimizer = optimizer
-
         try:
             import horovod.tensorflow as hvd
         except ImportError:
@@ -19,6 +14,13 @@ class HorovodDistributedOptimizer(TFOptimizer):
             
         hvd.init()
         self.op = hvd.DistributedOptimizer(optimizer.op)
+
+
+        if comm is None:
+            comm = CommunicationNetwork()
+        self.communication = comm
+        self.original_optimizer = optimizer
+
 
     def as_operator(self):
         try:
