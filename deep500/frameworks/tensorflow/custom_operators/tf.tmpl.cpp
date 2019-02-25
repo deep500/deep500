@@ -108,16 +108,17 @@ public:
         const Tensor& {{tensor}}_t = context->input({{loop.index0}});
         const {{type}} *{{tensor}} = ({{type}}*){{tensor}}_t.tensor_data().data();
         {% endfor %}
-        
+
         // Create output tensors
         {% for type, tensor in output_tensors %}
+            {% set outer_loop = loop %}
             Tensor* output_{{loop.index0}} = nullptr;
             {% if output_shapes[loop.index0]|length == 0 %}
                 OP_REQUIRES_OK(context, context->allocate_output({{loop.index0}}, context->input({{loop.index0}}).shape(), &output_{{loop.index0}}));
             {% else %}
                 TensorShape output_shape_{{loop.index0}};
-                {% for s in output_shapes[loop.index0] %}
-                    output_shape_{{loop.index0}}.AddDim({{s}});
+                {% for s in output_shapes[outer_loop.index0] %}
+                    output_shape_{{outer_loop.index0}}.AddDim({{s}});
                 {% endfor %}
                 OP_REQUIRES_OK(context, context->allocate_output({{loop.index0}}, output_shape_{{loop.index0}}, &output_{{loop.index0}}));
             {% endif %}
@@ -150,16 +151,17 @@ public:
         const Tensor& {{tensor}}_t = context->input({{loop.index0}});
         const {{type}} *{{tensor}} = ({{type}}*){{tensor}}_t.tensor_data().data();
         {% endfor %}
-        
+
         // Create output tensors
         {% for type, tensor in input_grads %}
             Tensor* output_{{loop.index0}} = nullptr;
+            {% set outer_loop = loop %}
             {% if input_shapes[loop.index0]|length == 0 %}
                 OP_REQUIRES_OK(context, context->allocate_output({{loop.index0}}, context->input({{loop.index0}}).shape(), &output_{{loop.index0}}));
             {% else %}
                 TensorShape output_shape_{{loop.index0}};
-                {% for s in input_shapes[loop.index0] %}
-                    output_shape_{{loop.index0}}.AddDim({{s}});
+                {% for s in input_shapes[outer_loop.index0] %}
+                    output_shape_{{outer_loop.index0}}.AddDim({{s}});
                 {% endfor %}
                 OP_REQUIRES_OK(context, context->allocate_output({{loop.index0}}, output_shape_{{loop.index0}}, &output_{{loop.index0}}));
             {% endif %}
@@ -180,4 +182,3 @@ REGISTER_KERNEL_BUILDER(Name(STR_CLASSNAME).Device({{devicename}}), CLASSNAME{{p
 // Backward
 REGISTER_KERNEL_BUILDER(Name(STR_GCLASSNAME).Device({{devicename}}), GCLASSNAME{{platform}});
 {% endfor %}
-
