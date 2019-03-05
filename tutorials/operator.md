@@ -1,5 +1,3 @@
-# Deep500 Tutorials
-
 ## Level 0: Custom Operator
 
 You have a new implementation of an operator. With the meta-framework, checking for quality and performance is as easy as writing the operator itself. In this example, we use TensorFlow as the underlying framework, and implement a new operator as follows:
