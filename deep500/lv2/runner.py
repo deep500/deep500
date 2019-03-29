@@ -112,10 +112,11 @@ class Runner(object):
                 self._test_accuracy(stats, events)
                 for event in events: event.after_epoch(epoch, self, stats)
 
-            for event in events: event.after_training(self, stats)
         except (StopIteration, StopTraining):
             pass # If stopping was requested
 
+        for event in events: event.after_training(self, stats)
+              
         # Remove events from executor and samplers
         del self.executor.events[-len(executor_events):]
         del self.train_set.events[-len(sampler_events):]
