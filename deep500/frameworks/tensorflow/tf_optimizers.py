@@ -61,7 +61,7 @@ class RMSPropOptimizer(TFOptimizer):
         self.lr = self._fetch_or_constant(learning_rate)
         self.decay = self._fetch_or_constant(decay)
         self.momentum = self._fetch_or_constant(momentum)
-        self.epsilon = self._fetch_or_constant(epsilons)
+        self.epsilon = self._fetch_or_constant(epsilon)
         self.op = tf.train.RMSPropOptimizer(learning_rate=self.lr, 
                                             decay=self.decay, 
                                             momentum=self.momentum, 
