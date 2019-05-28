@@ -37,7 +37,7 @@ class MomentumOptimizer(d5.UpdateRuleOptimizer):
         return self.accumulation[grad_name]
 
 
-class AdamOptimizer(d5.UpdateRuleOptimizer):
+class AdamOptimizer(d5.ThreeStepOptimizer):
 
     def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-08):
         super().__init__(executor, loss)
