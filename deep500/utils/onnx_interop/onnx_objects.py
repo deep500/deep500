@@ -468,8 +468,8 @@ class OnnxValueInfo:
         self.doc_string = doc_string
 
     @staticmethod
-    def create_infos(infos):
-        return [OnnxValueInfo.create_from_onnx_info(info) for info in infos]
+    def create_info(info):
+        return [OnnxValueInfo.create_from_onnx_info(i) for i in info]
 
     @classmethod
     def create_from_onnx_info(cls, info):
@@ -482,14 +482,14 @@ class OnnxValueInfo:
 class OnnxGraph(Element):
     def __init__(self, nodes: List[Operation], name: Optional[str],
                  initializers: List[OnnxTensor], doc_string: Optional[str], inputs: List[OnnxValueInfo],
-                 outputs: List[OnnxValueInfo], value_infos: List[OnnxValueInfo]):
+                 outputs: List[OnnxValueInfo], value_info: List[OnnxValueInfo]):
         self.nodes = nodes
         self.name = name
         self.initializers = initializers
         self.doc_string = doc_string
         self.inputs = inputs
         self.outputs = outputs
-        self.value_infos = value_infos
+        self.value_info = value_info
 
     @classmethod
     def create_from_onnx_graph(cls, graph):
@@ -498,10 +498,10 @@ class OnnxGraph(Element):
         initializers = [OnnxTensor.create_from_onnx_tensor(tensor) for tensor in
                                           graph.initializer]
         doc_string = graph.doc_string
-        inputs = OnnxValueInfo.create_infos(graph.input)
-        outputs = OnnxValueInfo.create_infos(graph.output)
-        value_infos = OnnxValueInfo.create_infos(graph.value_info)
-        return cls(nodes, name, initializers, doc_string, inputs, outputs, value_infos)
+        inputs = OnnxValueInfo.create_info(graph.input)
+        outputs = OnnxValueInfo.create_info(graph.output)
+        value_info = OnnxValueInfo.create_info(graph.value_info)
+        return cls(nodes, name, initializers, doc_string, inputs, outputs, value_info)
 
     def accept(self, visitor, network):
         visitor.visit_graph(self, network)

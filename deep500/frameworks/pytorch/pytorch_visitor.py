@@ -9,14 +9,29 @@ from torch.nn import Module
 from deep500.frameworks.pytorch.pytorch_network import PyTorchNetwork
 from deep500.utils.onnx_interop.generated_operators import *
 from deep500.utils.onnx_interop.losses import *
-from deep500.utils.onnx_interop.onnx_objects import OnnxTensor, OnnxValueInfo
+from deep500.utils.onnx_interop.onnx_objects import (OnnxTensor,
+    OnnxFloatTensor, OnnxDoubleTensor, OnnxValueInfo)
 from deep500.utils.onnx_interop.onnx_base_visitor import OnnxBaseVisitor, EmptyOnnxBaseVisitor
+
+
+def _is_param(tensor: OnnxTensor):
+    """ A helper function to deal with an ONNX limitation - Tensors cannot be
+        designated as parameters or fixed. Returns True if the tensor should
+        be treated as a parameter (i.e., require gradients), or False
+        otherwise. """
+    if not isinstance(tensor, (OnnxFloatTensor, OnnxDoubleTensor)):
+        return False
+    if 'running_mean' in tensor.name or 'running_var' in tensor.name:
+        return False
+
+    return True
 
 
 class PyTorchMetaVisitor(EmptyOnnxBaseVisitor):
 
     def visit_initializer(self, each_initializer: OnnxTensor, network: PyTorchNetwork):
-        network.feed_tensor(each_initializer.name, each_initializer.get_data(), is_param=True)
+        network.feed_tensor(each_initializer.name, each_initializer.get_data(),
+                            is_param=_is_param(each_initializer))
 
     def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
         network.outputs[output.name] = output.name
