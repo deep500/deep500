@@ -50,7 +50,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
         self.optimizer = None
 
     def visit_constant(self, op: Constant, network: PyTorchNetwork):
-        network.feed_tensor(op.o_output, op.value.get_value())
+        network.feed_tensor(op.o_output, torch.tensor(op.value.get_value(), device='cpu'))
 
     def visit_add(self, op: Add, network: PyTorchNetwork):
         A = network.fetch_tensor_internal(op.i_A)
@@ -97,7 +97,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
 
     def visit_gather(self, op, network: PyTorchNetwork):
         input = network.fetch_tensor_internal(op.i_data)
-        indices = network.fetch_tensor_internal(op.i_indices)
+        indices = network.fetch_tensor_internal(op.i_indices).cpu()
         results = torch.gather(
             input,
             op.axis.value,
