@@ -46,15 +46,16 @@ class SummaryGeneratorEvent(RunnerEvent, OptimizerEvent, ExecutorEvent):
         training_stats.n_batches_used += 1
 
         # Accuracy for classification
-        if self.inp and self.runner.train_set.dataset and self.runner.network_output:
-            y_corr = self.inp[self.runner.train_set.dataset.label_node]
-            y_network = output[self.runner.network_output]
-        
-            if training_stats.current_summary.wrong is None:
-                training_stats.current_summary.wrong = 0
-            wrong = np.sum(y_corr != np.argmax(y_network, axis=1))
-            training_stats.current_summary.wrong += wrong
-            training_stats.current_summary.wrong_batch.append(wrong)
+        if (self.inp and self.runner.train_set.dataset
+                and self.runner.network_output and self.runner.network_output in output):
+                y_corr = self.inp[self.runner.train_set.dataset.label_node]
+                y_network = output[self.runner.network_output]
+
+                if training_stats.current_summary.wrong is None:
+                    training_stats.current_summary.wrong = 0
+                wrong = np.sum(y_corr != np.argmax(y_network, axis=1))
+                training_stats.current_summary.wrong += wrong
+                training_stats.current_summary.wrong_batch.append(wrong)
 
     def before_test_set(self, runner, training_stats: TrainingStatistics, sampler):
         self.runner = runner
