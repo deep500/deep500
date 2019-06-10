@@ -1,20 +1,22 @@
 import numpy as np
 import torch
-from torch import autograd, cuda, nn
+from torch import autograd
 from typing import List
 
 import deep500 as d5
 
 
 class PyTorchNetwork(d5.Network):
-    def __init__(self):
+    def __init__(self, device: d5.DeviceType):
         super(PyTorchNetwork, self).__init__()
         self.variables = {}
         self.inputs = {}
         self.outputs = {}
         self.optimizer_created = False
         self.grad_params = {}
-        self.cuda = cuda.is_available()
+        self.cuda = device.is_gpu()
+        if self.cuda:
+            torch.cuda.set_device(device.num)
 
     def get_params(self):
         return list(self.grad_params.keys())

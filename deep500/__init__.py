@@ -1,7 +1,6 @@
 ####################################
 # General utilities
-from .utils.tensor_desc import TensorDescriptor, tensor_t
-tensordesc = TensorDescriptor
+from .utils.tensor_desc import TensorDescriptor, tensor_t, TensorDescriptor as tensordesc
 
 # Metrics and Events
 from .utils.metric import TestMetric
@@ -12,8 +11,8 @@ from .utils.metrics import NormDifference, L1Error, L2Error, MaxError, DiffHeatm
 from .utils.device import DeviceType, GPUDevice, CPUDevice
 
 # ONNX Visitor
-from .utils.onnx_interop.onnx_base_visitor import OnnxBaseVisitor  # throws error when op is not implemented
-from .utils.onnx_interop.onnx_base_visitor import EmptyOnnxBaseVisitor  # does not throw error when op is not implemented
+from .utils.onnx_interop.onnx_base_visitor import OnnxBaseVisitor  # raises error when op is not implemented
+from .utils.onnx_interop.onnx_base_visitor import EmptyOnnxBaseVisitor  # does not raise error when op is not implemented
 
 # ONNX Test Parser
 from .utils.onnx_interop import parser

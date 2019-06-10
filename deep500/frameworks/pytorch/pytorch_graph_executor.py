@@ -10,13 +10,13 @@ from .pytorch_visitor import PyTorchMetaVisitor, PyTorchVisitor
 
 class PyTorchGraphExecutor(d5.GraphExecutor):
 
-    def __init__(self, model: d5.ops.OnnxModel, events: List[d5.ExecutorEvent] = []):
+    def __init__(self, model: d5.ops.OnnxModel, device: d5.DeviceType,
+                 events: List[d5.ExecutorEvent] = []):
         super().__init__(model, events)
         self.model = model
 
-        # this stuff has to get resetted when teardown
         self.setup_done = False
-        self.network = PyTorchNetwork()
+        self.network = PyTorchNetwork(device)
 
     def setup(self):
         if not self.setup_done:
