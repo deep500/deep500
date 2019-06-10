@@ -86,6 +86,31 @@ class PyTorchVisitor(OnnxBaseVisitor):
         result = F.conv2d(X, W, B, **args)
         network.feed_tensor(op.o_Y, result)
 
+    def visit_pad(self, op, network: PyTorchNetwork):
+        data = network.fetch_tensor_internal(op.i_data)
+        result = F.pad(data, op.pads.value, mode=op.mode.value, value=op.value.value)
+        network.feed_tensor(op.o_output, result)
+
+    def visit_shape(self, op, network: PyTorchNetwork):
+        data = network.fetch_tensor_internal(op.i_data)
+        network.feed_tensor(op.o_shape, torch.tensor(data.shape))
+
+    def visit_gather(self, op, network: PyTorchNetwork):
+        input = network.fetch_tensor_internal(op.i_data)
+        indices = network.fetch_tensor_internal(op.i_indices)
+        results = torch.gather(
+            input,
+            op.axis.value,
+            indices)
+        network.feed_tensor(op.o_output, results)
+
+    def visit_unsqueeze(self, op, network: PyTorchNetwork):
+        data = network.fetch_tensor_internal(op.i_data)
+        result = data
+        for axis in op.axes.value:
+            result = torch.unsqueeze(result, axis)
+        network.feed_tensor(op.o_expanded, result)
+
     def visit_lrn(self, op, network: PyTorchNetwork):
         X = network.fetch_tensor_internal(op.i_X)
         result = F.local_response_norm(
@@ -127,7 +152,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
         if hasattr(op, 'strides') and op.strides:
             args['stride'] = op.strides.get_value()[0]
         if hasattr(op, 'pads') and op.pads:
-            args['pads'] = op.pads.get_value()[0]
+            args['padding'] = op.pads.get_value()[0]
         result = F.avg_pool2d(X, **args)
         network.feed_tensor(op.o_Y, result)
 
