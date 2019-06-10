@@ -46,7 +46,7 @@ class AdamOptimizer(TFOptimizer):
         self.lr = self._fetch_or_constant(learning_rate)
         self.beta1 = self._fetch_or_constant(beta1)
         self.beta2 = self._fetch_or_constant(beta2)
-        self.epsilon = self._fetch_or_constant(epsilons)
+        self.epsilon = self._fetch_or_constant(epsilon)
         self.op = tf.train.AdamOptimizer(learning_rate=self.lr, 
                                          beta1=self.beta1, beta2=self.beta2,
                                          epsilon=self.epsilon)

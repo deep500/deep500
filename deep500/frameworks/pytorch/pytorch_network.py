@@ -59,10 +59,10 @@ class PyTorchNetwork(d5.Network):
             tensors.append(var.numpy())
         return tensors
 
-    def fetch_tensor_internal(self, name):
-        return self.fetch_tensors_internal([name])[0]
+    def fetch_internal_tensor(self, name):
+        return self.fetch_internal_tensors([name])[0]
 
-    def fetch_tensors_internal(self, names):
+    def fetch_internal_tensors(self, names):
         return [self.variables.get(each_name) for each_name in names]
 
     def feed_tensor(self, name, new_value, device_option=None, is_param=False):
