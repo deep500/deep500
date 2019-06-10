@@ -1,3 +1,10 @@
+# Initialize CUDA first (due to an initialization issue)
+try:
+    import torch.cuda
+    torch.cuda.init()
+except RuntimeError:
+    pass
+
 from .custom_operators.pytorch import custom_op, desc_from_tensor, custom_op_from_native
 from .op_validation import test_nativeop_forward, test_nativeop_gradient
 import deep500 as d5

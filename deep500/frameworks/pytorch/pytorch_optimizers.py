@@ -7,7 +7,8 @@ from .pytorch_visitor import PyTorchVisitor
 
 
 class PyTorchOptimizer(FirstOrderOptimizer):
-    def __init__(self, executor: PyTorchGraphExecutor, loss: str, with_outputs=True):
+    def __init__(self, executor: PyTorchGraphExecutor, loss: str,
+                 with_outputs=True):
         if not isinstance(executor, PyTorchGraphExecutor):
             raise TypeError('PyTorch optimizer must use PyTorch executor')
         super().__init__(executor, loss)
