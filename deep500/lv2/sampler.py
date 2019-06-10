@@ -54,10 +54,42 @@ class Sampler(Iterator):
         self.random_state = np.random.RandomState(self.seed)
 
 
+class OrderedSampler(Sampler):
+    """ The OrderedSampler samples the dataset in a sequential order. """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        batch_size: int,
+        drop_last_batch: bool=True
+    ):
+        super().__init__(dataset, batch_size, 0)
+        self.batch_idx = 0
+
+    def __next__(self):
+        for event in self.events: event.before_sampling(self, self.batch_size)
+        if (self.drop_last_batch and
+                self.batch_idx + self.batch_size > len(self.dataset)):
+            raise StopIteration
+        if self.batch_idx >= len(self.dataset):
+            raise StopIteration
+        batch = self.dataset[self.batch_idx:
+                             min(self.batch_idx + self.batch_size,
+                                 len(self.dataset))]
+        self.batch_idx += self.batch_size
+
+        for event in self.events: event.after_sampling(self, batch)
+        return batch
+
+    def reset(self):
+        super().reset()
+        self.batch_idx = 0
+
+
 class ShuffleSampler(Sampler):
-    '''The ShuffleSampler class approximates the uniform distribution. On
-    initialization and every reset, it shuffles the list of samples. On each
-    next call, it returns a continuous chunk of samples.'''
+    """ The ShuffleSampler class approximates the uniform distribution. On
+        initialization and every reset, it shuffles the list of samples. On
+        each next call, it returns a continuous chunk of samples. """
 
     def __init__(
         self,
