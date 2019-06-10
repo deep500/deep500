@@ -42,12 +42,12 @@ if __name__ == '__main__':
     test_sampler = d5.ShuffleSampler(test_set, BATCH_SIZE)
 
     # Create runner (training/test manager)
-    runner = d5.Runner(train_sampler, test_sampler, executor, optimizer,
-                       OUTPUT_NODE)
+    runner = d5.Trainer(train_sampler, test_sampler, executor, optimizer,
+                        OUTPUT_NODE)
     #############################
     
     # Set up events to stop training after reaching the desired test accuracy
-    events = d5.DefaultRunnerEvents(MAX_EPOCHS) + [
+    events = d5.DefaultTrainerEvents(MAX_EPOCHS) + [
         d5.training_events.AccuracyAbortEvent(accuracy)]
 
     # Run training/test loop

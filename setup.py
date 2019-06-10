@@ -37,6 +37,7 @@ setup(
         'numpy',
         'tqdm',
         'cmake',
+        'jinja2'
     ],
     classifiers=[
         'Programming Language :: Python :: 3.5',

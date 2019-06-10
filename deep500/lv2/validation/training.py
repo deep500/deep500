@@ -1,8 +1,8 @@
 from typing import Any, List, Optional, Union
 
-from deep500 import (Dataset, DefaultRunnerEvents, 
-                     GraphExecutor, Sampler, 
-                     ShuffleSampler, Optimizer, Runner, TestMetric, TrainingEvent)
+from deep500 import (Dataset, DefaultTrainerEvents,
+                     GraphExecutor, Sampler,
+                     ShuffleSampler, Optimizer, Trainer, TestMetric, TrainingEvent)
 from deep500.lv2.validation.metrics import DefaultTrainingMetrics
 
 SamplerOrDataset = Union[Sampler, Dataset]
@@ -26,13 +26,13 @@ def test_training(executor: GraphExecutor, training_set: SamplerOrDataset,
                        TrainingEvent to obtain more information (see TestAccuracy
                        for example).
         @param events A list of events to use for the executor, optimizer, and 
-                      runner. If some metrics are also events, there is no need
+                      Trainer. If some metrics are also events, there is no need
                       to include them here as well, they will be added automatically.
         @return A list of objects resulting from the metrics.
     """
     # Default events
     if events is None:
-        events = DefaultRunnerEvents(epochs)
+        events = DefaultTrainerEvents(epochs)
 
     # Create Samplers according to inputs
     if isinstance(training_set, Sampler):
@@ -50,8 +50,8 @@ def test_training(executor: GraphExecutor, training_set: SamplerOrDataset,
     else:
         raise ValueError('Training set type not supported')
 
-    # Create runner
-    runner = Runner(tsampler, vsampler, executor, optimizer, output_node)
+    # Create trainer
+    trainer = Trainer(tsampler, vsampler, executor, optimizer, output_node)
 
     # Add metrics to events as necessary
     for metric in metrics:
@@ -64,22 +64,22 @@ def test_training(executor: GraphExecutor, training_set: SamplerOrDataset,
 
     for metric in normal_metrics:
         metric.begin(input)
-    outputs = runner.run_loop(epochs, events)
+    outputs = trainer.run_loop(epochs, events)
     for metric in normal_metrics:
         metric.end(outputs)
 
     for metric in rerun_metrics:
         for i in range(metric.reruns):
             metric.begin(input)
-            outputs = runner.run_loop(epochs, events)
+            outputs = trainer.run_loop(epochs, events)
             metric.end(outputs)
 
     # Execute metrics
     results = []
     for metric in metrics:
-        result = metric.measure(runner, outputs, None)
+        result = metric.measure(trainer, outputs, None)
         results.append(result)
-        summary = metric.measure_summary(runner, outputs, None)
+        summary = metric.measure_summary(trainer, outputs, None)
         print("{}: {}".format(
                 type(metric).__name__, summary))
 

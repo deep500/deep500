@@ -15,10 +15,11 @@ from deep500.lv2.events import (SummaryGeneratorEvent,
     SummaryGeneratorInferenceEvent, TerminalBarEvent)
 
 
-def DefaultRunnerEvents(epochs):
+def DefaultTrainerEvents(epochs):
     return [TerminalBarEvent(epochs)]
 
-class Runner(object):
+
+class Trainer(object):
     """ A training manager class that runs a training/test loop, with epochs 
         and invoking corresponding events. """
     def __init__(self,
@@ -27,7 +28,7 @@ class Runner(object):
                  executor: GraphExecutor,
                  optimizer: Optimizer,
                  network_output: Optional[str] = None):
-        """ Creates a Runner object.
+        """ Creates a Trainer object.
             @param training_sampler Sampler that samples training dataset.
             @param validation_sampler Sampler that samples validation dataset.
                                       Can be None.
@@ -84,7 +85,7 @@ class Runner(object):
                                         self.test_set.batch_size))
         # Set and distribute events
         if events is None:
-            events = DefaultRunnerEvents(epochs)
+            events = DefaultTrainerEvents(epochs)
         if collect_all_times:
             events.append(SummaryGeneratorInferenceEvent(stats))
         else:

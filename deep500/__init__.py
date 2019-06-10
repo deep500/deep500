@@ -53,8 +53,8 @@ from .lv2.summaries import TrainingStatistics
 # Training events and statistics generators
 import deep500.lv2.events as training_events
 
-# Runner
-from .lv2.runner import Runner, DefaultRunnerEvents
+# Trainer
+from .lv2.trainer import Trainer, DefaultTrainerEvents
 
 from .lv2.validation.metrics import TrainingAccuracy, TestAccuracy, DefaultTrainingMetrics, DatasetBias, SamplerEventMetric
 from .lv2.validation import test_optimizer, test_training, test_sampler

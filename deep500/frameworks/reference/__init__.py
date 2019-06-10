@@ -3,7 +3,7 @@ from .custom_operators.base import custom_op, desc_from_tensor
 try:
     from .distributed_optimizers import *
 except ImportError:
-    raise # Internal modules log import warnings as necessary
+    pass # Internal modules log import warnings as necessary
 
 import deep500 as d5
 

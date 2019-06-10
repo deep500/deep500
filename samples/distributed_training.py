@@ -87,7 +87,7 @@ if __name__ == '__main__':
     #############################
 
     # Events: Only print progress on rank 0
-    events = d5.DefaultRunnerEvents(MAX_EPOCHS) if comm is None or comm.rank == 0 else []
+    events = d5.DefaultTrainerEvents(MAX_EPOCHS) if comm is None or comm.rank == 0 else []
 
     # Metrics: Add communication volume
     metrics = d5.DefaultTrainingMetrics() + [d5.CommunicationVolume()]
