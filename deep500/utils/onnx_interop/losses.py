@@ -23,7 +23,7 @@ class CrossEntropy(Loss):
         visitor.visit_cross_entropy(self, network)
 
 
-class LabelCrossEntropy(Loss):
+class SoftmaxCrossEntropy(Loss):
     def __init__(self, input: List[str], output: str):
         super().__init__(input, output)
         self.i_X = input[0]
@@ -31,7 +31,7 @@ class LabelCrossEntropy(Loss):
         self.o_output = output
 
     def accept(self, visitor, network):
-        visitor.visit_label_cross_entropy(self, network)
+        visitor.visit_softmax_cross_entropy(self, network)
 
 
 class MeanSquaredError(Loss):

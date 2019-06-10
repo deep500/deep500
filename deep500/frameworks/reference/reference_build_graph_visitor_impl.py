@@ -597,14 +597,14 @@ class ReferenceBuildGraphVisitor(d5.OnnxBaseVisitor):
         network.losses[op.o_output] = (celayer, op, op_name)
 
 
-    def visit_label_cross_entropy(self, op: d5.ops.LabelCrossEntropy, network: ReferenceNetwork):
+    def visit_softmax_cross_entropy(self, op: d5.ops.SoftmaxCrossEntropy, network: ReferenceNetwork):
         X, target = network.variables[op.i_X], network.variables[op.i_target]
         input_desc = [desc_from_tensor(X), desc_from_tensor(target)] 
         L_shape = np.zeros(1, dtype=X.dtype)
         output_desc = [desc_from_tensor(L_shape)]
         network.variables[op.o_output] = L_shape
 
-        lcelayer = LabelCrossEntropyOp(
+        lcelayer = SoftmaxCrossEntropyOp(
             input_desc,
             output_desc
         )

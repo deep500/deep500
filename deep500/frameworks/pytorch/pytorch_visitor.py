@@ -36,7 +36,7 @@ class PyTorchMetaVisitor(EmptyOnnxBaseVisitor):
     def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
         network.outputs[output.name] = output.name
 
-    def visit_label_cross_entropy(self, label_cross_entropy: LabelCrossEntropy, network: PyTorchNetwork):
+    def visit_softmax_cross_entropy(self, label_cross_entropy: SoftmaxCrossEntropy, network: PyTorchNetwork):
         network.outputs[label_cross_entropy.o_output] = label_cross_entropy.o_output
 
 
@@ -175,7 +175,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
         result = torch.add(A, C)
         network.feed_tensor(op.o_Y, result)
 
-    def visit_label_cross_entropy(self, op: LabelCrossEntropy, network: PyTorchNetwork):
+    def visit_softmax_cross_entropy(self, op: SoftmaxCrossEntropy, network: PyTorchNetwork):
         X, label = network.fetch_internal_tensors([op.i_X, op.i_target])
         network.feed_tensor(op.o_output, F.cross_entropy(X, label.long()))
 

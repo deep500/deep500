@@ -44,7 +44,7 @@ if __name__ == '__main__':
     
     # Create dataset and add loss function to model
     train_set, test_set = d5ds.load_dataset(dsname, INPUT_NODE, LABEL_NODE)
-    model.add_operation(d5.ops.LabelCrossEntropy([OUTPUT_NODE, LABEL_NODE], LOSS_NODE))
+    model.add_operation(d5.ops.SoftmaxCrossEntropy([OUTPUT_NODE, LABEL_NODE], LOSS_NODE))
 
 
     executor = d5tf.from_model(model)

@@ -330,7 +330,7 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
         network.feed_internal_tensor(op.o_output, L)
         network.add_output(op.o_output)
 
-    def visit_label_cross_entropy(self, op: d5.ops.LabelCrossEntropy, network: TensorflowNetwork):
+    def visit_softmax_cross_entropy(self, op: d5.ops.SoftmaxCrossEntropy, network: TensorflowNetwork):
         softmax = network.fetch_internal_tensor(op.i_X)
 
         labels = tf.placeholder(tf.int32, name=op.i_target)
