@@ -11,5 +11,5 @@ def from_onnx(onnx_file: str, device: d5.DeviceType = d5.GPUDevice()) -> PyTorch
     return from_model(model, device)
 
 def from_model(model: d5.ops.OnnxModel, device: d5.DeviceType = d5.GPUDevice()) -> PyTorchGraphExecutor:
-    graph_executor = PyTorchGraphExecutor(model)
+    graph_executor = PyTorchGraphExecutor(model, device)
     return graph_executor
