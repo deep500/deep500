@@ -22,7 +22,7 @@ if __name__ == '__main__':
     # Create CNN using ONNX
     ds_cls, ds_c, ds_h, ds_w = d5ds.dataset_shape(dsname)
     onnx_file = d5net.export_network(netname, BATCH_SIZE, classes=ds_cls,
-                                     channels=ds_c, height=ds_h, width=ds_w)
+                                     shape=(ds_c, ds_h, ds_w))
     model = d5.parser.load_and_parse_model(onnx_file)
 
     # Recover input and output nodes (assuming only one input and one output)

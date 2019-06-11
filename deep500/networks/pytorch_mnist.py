@@ -36,13 +36,10 @@ class Net(nn.Module):
         return F.softmax(x, dim=1)
 
         
-def export_simple_cnn(batch_size: int, classes=10, channels=1, width=28, height=28, file_path='mnist_cnn.onnx') -> str:
-    model = Net(channels, width, classes)
+def export_simple_cnn(batch_size: int, classes=10, shape=(1, 28, 28),
+                      file_path='mnist_cnn.onnx') -> str:
+    model = Net(shape[0], shape[1], classes)
     model.apply(conv_init)
-    dummy_input = Variable(torch.randn(batch_size, channels, height, width))
-    if torch.cuda.is_available():
-        model.cuda()
-        dummy_input = dummy_input.cuda()
-
+    dummy_input = Variable(torch.randn(batch_size, *shape))
     torch.onnx.export(model, dummy_input, file_path, verbose=True)
     return file_path
