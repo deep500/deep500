@@ -5,6 +5,7 @@ from typing import List
 from deep500.lv2.dataset import Dataset
 from deep500.lv2.sampler import Sampler
 from deep500.lv2.event import SamplerEvent
+from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
 # NOTE: This file is heavily based on the TensorFlow official ImageNet 
 # preprocessing pipeline, which can be found at:
@@ -28,6 +29,9 @@ def imagenet_shape(is_nchw=True):
         return (_NUM_CLASSES, _NUM_CHANNELS, _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE)
     else:
         return (_NUM_CLASSES, _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS)
+
+def imagenet_loss():
+    return SoftmaxCrossEntropy
 
 class TFRecordD500Dataset(Dataset):
     def __init__(self, files: List[str], sample_node: str, label_node: str,

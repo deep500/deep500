@@ -7,7 +7,7 @@ import gzip
 
 from deep500.utils.download import real_download
 from deep500.lv2.dataset import Input, Dataset, NumpyDataset
-from deep500.lv2.sampler import Sampler, ShuffleSampler
+from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
 
 def download_mnist_and_get_file_paths() -> Dict[str, str]:
@@ -53,6 +53,12 @@ def mnist_shape():
 
 def fashion_mnist_shape():
     return mnist_shape()
+
+def mnist_loss():
+    return SoftmaxCrossEntropy
+
+def fashion_mnist_loss():
+    return mnist_loss()
 
 def _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=True) -> Tuple[Dataset, Dataset]:
     """ Returns the training and testing Dataset objects for an MNIST-like dataset.

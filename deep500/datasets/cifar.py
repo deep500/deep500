@@ -5,6 +5,7 @@ import numpy as np
 
 from deep500.utils.download import real_download, unzip
 from deep500.lv2.dataset import Input, NumpyDataset
+from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
 def download_cifar10_and_get_file_paths(folder=''):
     """
@@ -48,6 +49,11 @@ def cifar10_shape():
     return (10, *_cifar_shape())
 def cifar100_shape():
     return (100, *_cifar_shape())
+
+def cifar10_loss():
+    return SoftmaxCrossEntropy
+def cifar100_loss():
+    return cifar10_loss()
 
 cifar_mean = {
     'cifar10': (0.4914, 0.4822, 0.4465),
