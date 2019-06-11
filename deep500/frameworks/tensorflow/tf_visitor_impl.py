@@ -321,26 +321,26 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
         labels = tf.placeholder(tf.int32, name=op.i_target)
         network.feed_internal_tensor(op.i_target, labels)
 
-        softmax = network.fetch_internal_tensor(op.i_X)
-        # Tensorflow recommends to use tf_backed.nn.softmax_cross_entropy_with_logits()
-        # but since we only get softmax we have to apply the slow way here
-        L = -tf.reduce_sum(labels * tf.log(softmax), 1)
+        X = network.fetch_internal_tensor(op.i_X)
+        L = -tf.reduce_sum(labels * tf.log(X), 1)
         L = tf.reduce_mean(L, axis=0)
         network.loss_gradient = L
         network.feed_internal_tensor(op.o_output, L)
         network.add_output(op.o_output)
 
     def visit_softmax_cross_entropy(self, op: d5.ops.SoftmaxCrossEntropy, network: TensorflowNetwork):
-        softmax = network.fetch_internal_tensor(op.i_X)
+        X = network.fetch_internal_tensor(op.i_X)
 
         labels = tf.placeholder(tf.int32, name=op.i_target)
         network.feed_internal_tensor(op.i_target, labels)
 
-        labels = tf.one_hot(labels, softmax.get_shape().as_list()[1])
-        # Tensorflow recommends to use tf_backed.nn.softmax_cross_entropy_with_logits()
-        # but since we only get softmax we have to apply the slow way here
-        L = -tf.reduce_sum(labels * tf.log(softmax), 1)
-        L = tf.reduce_mean(L, axis=0)
+        labels = tf.one_hot(labels, X.get_shape().as_list()[-1])
+        result = tf.nn.softmax_cross_entropy_with_logits_v2(
+            labels,
+            X,
+            axis=None  # Defaults to -1
+        )
+        L = tf.reduce_mean(result, axis=0)
         network.loss_gradient = L
         network.feed_internal_tensor(op.o_output, L)
         network.add_output(op.o_output)

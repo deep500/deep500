@@ -4,6 +4,7 @@ Reference:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Deep Residual Learning for Image Recognition. arXiv:1512.03385
 '''
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -171,12 +172,30 @@ _DEPTH_TO_FUNCTION = { 18: ResNet18, 20: ResNet20, 32: ResNet32, 34: ResNet34,
                        44: ResNet44, 50: ResNet50, 56: ResNet56, 101: ResNet101,
                        110: ResNet110, 152: ResNet152 }
 
+def init_model(model):
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            m.weight.data.normal_(0, math.sqrt(2. / n))
+        elif isinstance(m, nn.BatchNorm2d):
+            m.weight.data.fill_(1)
+            m.bias.data.zero_()
+    for m in model.modules():
+        if isinstance(m, Bottleneck):
+            nn.init.constant_(m.bn3.weight, 0)
+        elif isinstance(m, BasicBlock):
+            nn.init.constant_(m.bn2.weight, 0)
+
+    model.linear.weight.data.normal_(0, 0.01)
+    model.linear.bias.data.zero_()
+
 def export_resnet(batch_size, depth=50, classes=10, file_path='resnet.onnx',
                   shape=(3, 32, 32)):
     if depth not in _DEPTH_TO_FUNCTION:
         raise ValueError('ResNet depth %d not defined' % depth)
         
     net = _DEPTH_TO_FUNCTION[depth](classes, shape[0])
+    init_model(net)
     dummy_input = Variable(torch.randn(batch_size, *shape))
 
     torch.onnx.export(net, dummy_input, file_path, verbose=True)
