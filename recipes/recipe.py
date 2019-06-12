@@ -6,12 +6,15 @@
 
     Parameters:
         Level 0 and 1:
-        - model: Deep Neural Network to load
+        - model: Deep Neural Network to load (string, path to ONNX file, or
+                 callable that returns OnnxModel, input node, output node)
         - executor: Graph Executor to use
 
         Level 2:
         Dataset:
-        - dataset: Dataset to load
+        - dataset: Dataset to load (string or callable class that returns two
+                   Dataset objects on call, and has two metadata properties:
+                   `loss` and `shape`)
         - train_sampler: Sampler for examples in training dataset
         - validation_sampler: Sampler for examples in validation dataset
 
@@ -24,6 +27,7 @@
         - events: List of events to use during execution
 """
 
+import os.path
 from typing import Any, Dict, List, Tuple
 import deep500 as d5
 import deep500.datasets as d5ds
@@ -58,8 +62,12 @@ def run_recipe(fixed: Dict[str, Any],
     if 'dataset' not in comps:
         raise SyntaxError('Dataset must be specified in training recipe')
 
-    loss_op = d5ds.dataset_loss(comps['dataset'])
-    ds_shape = d5ds.dataset_shape(comps['dataset'])
+    if isinstance(comps['dataset'], str):
+        loss_op = d5ds.dataset_loss(comps['dataset'])
+        ds_shape = d5ds.dataset_shape(comps['dataset'])
+    else:
+        loss_op = comps['dataset'].loss
+        ds_shape = comps['dataset'].shape
     ds_classes, sample_shape = ds_shape[0], ds_shape[1:]
 
     # Construct network
@@ -69,17 +77,33 @@ def run_recipe(fixed: Dict[str, Any],
         raise SyntaxError('Batch size must be specified in training recipe')
     batch = comps['batch_size']
 
-    network, input_node, output_node = \
-        d5nt.create_model(comps['model'], batch, *comps['model_args'],
-                          shape=sample_shape, **comps['model_kwargs'])
+    if isinstance(comps['model'], str):
+        # ONNX file
+        if os.path.isfile(comps['model']):
+            network = d5.parser.load_and_parse_model(comps['model'])
+            input_node = network.get_input_nodes()[0].name
+            output_node = network.get_output_nodes()[0].name
+        else:  # Standard model
+            network, input_node, output_node = \
+                d5nt.create_model(comps['model'], batch, *comps['model_args'],
+                                  shape=sample_shape, **comps['model_kwargs'])
+    else:  # Callable
+        network, input_node, output_node = comps['model'](
+            batch, *comps['model_args'], shape=sample_shape,
+            **comps['model_kwargs'])
 
     # Add loss function to model
     network.add_operation(loss_op([output_node, 'label'], 'loss'))
 
     # Construct dataset
-    train_set, validation_set = d5ds.load_dataset(
-        comps['dataset'], input_node, 'label', *comps['dataset_args'],
-        **comps['dataset_kwargs'])
+    if isinstance(comps['dataset'], str):
+        train_set, validation_set = d5ds.load_dataset(
+            comps['dataset'], input_node, 'label', *comps['dataset_args'],
+            **comps['dataset_kwargs'])
+    else:
+        train_set, validation_set = comps['dataset'](input_node, 'label',
+                                                     *comps['dataset_args'],
+                                                     **comps['dataset_kwargs'])
 
     # Construct samplers
     if 'train_sampler' in comps:

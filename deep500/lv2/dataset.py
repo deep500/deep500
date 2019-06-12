@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
+
 class Dataset(object):
     """ Encapsulates a dataset of encoded inputs. The purpose of this interface is to 
         provide instructions on how to read (or synthesize) the data, decode the inputs 
