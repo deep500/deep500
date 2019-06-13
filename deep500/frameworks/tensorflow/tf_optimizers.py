@@ -24,7 +24,7 @@ class TFOptimizer(FirstOrderOptimizer):
         if hasattr(self, name):
             var: tf.Variable = getattr(self, name)
             if predicate is None or predicate(var):
-                var.assign(value)
+                self.executor.session.run(var.assign(value))
 
     def step(self, inputs):
         # Lazy initialize operator
