@@ -11,10 +11,10 @@ class TrainingEvent(Event):
 class OptimizerEvent(TrainingEvent):
     """ Optimizer events. """
     
-    def before_optimizer_step(self, executor, inputs):
+    def before_optimizer_step(self, executor, optimizer, inputs):
         pass
 
-    def after_optimizer_step(self, executor, outputs, loss):
+    def after_optimizer_step(self, executor, optimizer, outputs, loss):
         pass
 
 class SamplerEvent(TrainingEvent):

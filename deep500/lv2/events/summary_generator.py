@@ -33,10 +33,10 @@ class SummaryGeneratorEvent(RunnerEvent, OptimizerEvent, ExecutorEvent):
 
         training_stats.train_summaries.append(training_stats.current_summary)
 
-    def before_optimizer_step(self, executor, input):
+    def before_optimizer_step(self, executor, optimizer, input):
         self.inp = input
 
-    def after_optimizer_step(self, executor, output, loss):
+    def after_optimizer_step(self, executor, optimizer, output, loss):
         training_stats = self.training_stats
         training_stats.current_summary.losses.append(loss)
         n = len(training_stats.current_summary.losses) + 1
@@ -123,11 +123,11 @@ class SummaryGeneratorInferenceEvent(SummaryGeneratorEvent):
         used_time = curtime - self.time_before_inference
         self.training_stats.current_summary.time_used_inference.append(used_time)
 
-    def before_optimizer_step(self, executor, inputs):
-        super().before_optimizer_step(executor, inputs)
+    def before_optimizer_step(self, executor, optimizer, inputs):
+        super().before_optimizer_step(executor, optimizer, inputs)
         self.time_before_optimizing = time.time()
 
-    def after_optimizer_step(self, executor, outputs, loss):
+    def after_optimizer_step(self, executor, optimizer, outputs, loss):
         curtime = time.time()
-        super().after_optimizer_step(executor, outputs, loss)
+        super().after_optimizer_step(executor, optimizer, outputs, loss)
         self.training_stats.current_summary.time_used_optimizing.append(curtime - self.time_before_optimizing)

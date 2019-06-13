@@ -39,7 +39,7 @@ class TimeAbortImmediateEvent(RunnerEvent, OptimizerEvent):
     def before_training(self, runner, training_stats):
         self.start_time = time.time()
 
-    def after_optimizer_step(self, executor, outputs, loss):
+    def after_optimizer_step(self, executor, optimizer, outputs, loss):
         diff = time.time() - self.start_time
         if diff > self.max_time_in_seconds:
             print('Time {} reached. Stopping'.format(diff))
