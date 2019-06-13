@@ -22,6 +22,12 @@ class PyTorchOptimizer(FirstOrderOptimizer):
             return self.network.fetch_internal_tensor(value)
         return value
 
+    def set_parameter(self, name, value, predicate=None):
+        for param_group in self.op.param_groups:
+            if name in param_group:
+                if predicate is None or predicate(param_group):
+                    param_group[name] = value
+
     def step(self, inputs):
         def closure():
             self.op.zero_grad()
@@ -48,9 +54,9 @@ class GradientDescent(PyTorchOptimizer):
                  weight_decay: Union[str, float] = 0.0):
         super().__init__(executor, loss)
         self.lr = self._fetch_or_constant(learning_rate)
-        self.decay = self._fetch_or_constant(weight_decay)
-        self.op = torch.optim.SGD(self.executor.network.variables.values(),
-                                  self.lr, weight_decay=self.decay)
+        self.weight_decay = self._fetch_or_constant(weight_decay)
+        self.op = torch.optim.SGD(self.executor.network.parameters,
+                                  self.lr, weight_decay=self.weight_decay)
 
 
 class AdamOptimizer(PyTorchOptimizer):
@@ -66,9 +72,10 @@ class AdamOptimizer(PyTorchOptimizer):
         self.beta2 = self._fetch_or_constant(beta2)
         self.epsilon = self._fetch_or_constant(epsilon)
         self.lr = self._fetch_or_constant(learning_rate)
-        self.decay = self._fetch_or_constant(weight_decay)
-        self.op = torch.optim.Adam(self.executor.network.variables.values(), self.lr, (self.beta1, self.beta2),
-                                   self.epsilon, self.decay)
+        self.weight_decay = self._fetch_or_constant(weight_decay)
+        self.op = torch.optim.Adam(self.executor.network.parameters, self.lr,
+                                   (self.beta1, self.beta2),
+                                   self.epsilon, self.weight_decay)
 
 
 class AdaGradOptimizer(PyTorchOptimizer):
@@ -79,12 +86,16 @@ class AdaGradOptimizer(PyTorchOptimizer):
                  initial_accumulator_value: Union[str, float] = 0.1):
         super().__init__(executor, loss)
         self.lr = self._fetch_or_constant(learning_rate)
-        self.iav = self._fetch_or_constant(initial_accumulator_value)
-        self.lrdecay = self._fetch_or_constant(lr_decay)
-        self.wdecay = self._fetch_or_constant(weight_decay)
-        self.op = torch.optim.Adagrad(self.executor.network.variables.values(), self.lr,
-                                      lr_decay=self.lrdecay, weight_decay=self.wdecay,
-                                      initial_accumulator_value=self.iav)
+        self.initial_accumulator_value = \
+            self._fetch_or_constant(initial_accumulator_value)
+        self.lr_decay = self._fetch_or_constant(lr_decay)
+        self.weight_decay = self._fetch_or_constant(weight_decay)
+        self.op = torch.optim.Adagrad(
+            self.executor.network.parameters,
+            self.lr,
+            lr_decay=self.lr_decay,
+            weight_decay=self.weight_decay,
+            initial_accumulator_value=self.initial_accumulator_value)
 
 class RMSPropOptimizer(PyTorchOptimizer):
     def __init__(self, executor: PyTorchGraphExecutor, loss: str,
@@ -97,11 +108,12 @@ class RMSPropOptimizer(PyTorchOptimizer):
         super().__init__(executor, loss)
         self.lr = self._fetch_or_constant(learning_rate)
         self.alpha = self._fetch_or_constant(alpha)
-        self.decay = self._fetch_or_constant(weight_decay)
+        self.weight_decay = self._fetch_or_constant(weight_decay)
         self.momentum = self._fetch_or_constant(momentum)
         self.epsilon = self._fetch_or_constant(epsilon)
         self.op = torch.optim.RMSprop(self.lr, self.alpha, self.epsilon,
-                                      self.decay, self.momentum, centered)
+                                      self.weight_decay, self.momentum,
+                                      centered)
 
 
 class MomentumOptimizer(PyTorchOptimizer):
@@ -115,10 +127,10 @@ class MomentumOptimizer(PyTorchOptimizer):
         self.lr = self._fetch_or_constant(learning_rate)
         self.momentum = self._fetch_or_constant(momentum)
         self.dampening = self._fetch_or_constant(dampening)
-        self.decay = self._fetch_or_constant(weight_decay)
-        self.op = torch.optim.SGD(self.executor.network.variables.values(),
+        self.weight_decay = self._fetch_or_constant(weight_decay)
+        self.op = torch.optim.SGD(self.executor.network.parameters,
                                   self.lr, self.momentum, self.dampening,
-                                  self.decay, nesterov=nesterov)
+                                  self.weight_decay, nesterov=nesterov)
 
 class LBFGSOptimizer(PyTorchOptimizer):
     def __init__(self, executor: PyTorchGraphExecutor, loss: str,
@@ -133,7 +145,7 @@ class LBFGSOptimizer(PyTorchOptimizer):
         self.lr = self._fetch_or_constant(learning_rate)
         self.tolerance_grad = self._fetch_or_constant(tolerance_grad)
         self.tolerance_change = self._fetch_or_constant(tolerance_change)
-        self.op = torch.optim.LBFGS(self.executor.network.variables.values(),
+        self.op = torch.optim.LBFGS(self.executor.network.parameters,
                                     self.lr, max_iter, max_eval,
                                     self.tolerance_grad, self.tolerance_change,
                                     history_size, line_search_fn)

@@ -18,6 +18,10 @@ class PyTorchNetwork(d5.Network):
         if self.cuda:
             torch.cuda.set_device(device.num)
 
+    @property
+    def parameters(self):
+        return [self.variables[k] for k in self.grad_params.keys()]
+
     def get_params(self):
         return list(self.grad_params.keys())
 
