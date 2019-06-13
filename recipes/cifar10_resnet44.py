@@ -13,8 +13,7 @@ FIXED = {
     'model': 'resnet',
     'model_kwargs': dict(depth=44),
     'dataset': 'cifar10',
-    'train_sampler': d5.ShuffleSampler,
-    'epochs': 1
+    'epochs': 90
 }
 
 # Mutable Components
@@ -22,8 +21,15 @@ MUTABLE = {
     'batch_size': 64,
     'executor': d5fw.from_model,
     'executor_kwargs': dict(device=d5.GPUDevice()),
+    'train_sampler': d5.ShuffleSampler,
     'optimizer': d5fw.MomentumOptimizer,
     'optimizer_args': (0.1, 0.9),
+    'optimizer_kwargs': dict(weight_decay=1e-4),
+    'events': [d5.training_events.EpochHPSchedule(lr=[(0, 1e-1),
+                                                      (81, 1e-2),
+                                                      (122, 1e-3),
+                                                      (164, 1e-4)]),
+               d5.training_events.TerminalBarEvent()]
 }
 
 # Acceptable Metrics
