@@ -23,10 +23,10 @@ class HyperparameterSchedule(RunnerEvent, OptimizerEvent):
         self._per_epoch = per_epoch
         self._optimizer = None
         self._step = 0
-        self._list_hp = {k: sorted(v, key=lambda a, b: a)
-                         for k, v in hyperparameters
+        self._list_hp = {k: sorted(v, key=lambda a: a[0])
+                         for k, v in hyperparameters.items()
                          if isinstance(v, (list, tuple))}
-        self._lambda_hp = {k: v for k, v in hyperparameters
+        self._lambda_hp = {k: v for k, v in hyperparameters.items()
                            if inspect.isfunction(v)}
 
     def _check_hp(self, value):
@@ -34,13 +34,12 @@ class HyperparameterSchedule(RunnerEvent, OptimizerEvent):
         to_change = {}
         for name, lhp in self._list_hp.items():
             index = -1
-            while value >= lhp[index + 1][0]:
+            while (index + 1) < len(lhp) and value >= lhp[index + 1][0]:
                 index += 1
                 continue
             # If we should change a parameter, change it
             if index >= 0:
                 to_change[name] = lhp[index + 1:]
-                print('SETTING %s TO %f' % (name, lhp[index][1]))
                 self._optimizer.set_parameter(name, lhp[index][1])
         for k, v in to_change.items():
             self._list_hp[k] = v
