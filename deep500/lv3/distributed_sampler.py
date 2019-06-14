@@ -1,16 +1,17 @@
 '''Implements classes and methods related to sampling datasets in a distributed environment.'''
 
-import math
 import numpy as np
-from typing import Callable
+from typing import Any, Callable
 from deep500.lv2.sampler import Sampler
 from deep500.lv2.dataset import Dataset
 from deep500.lv3.communication import CommunicationNetwork
 
+
 class DistributedSampler(Sampler):
-    '''The DistributedSampler class manages a Sampler, based on the rank ID
+    """ The DistributedSampler class manages a Sampler, based on the rank ID
     and total number of ranks. This sampler replicates the entire dataset
-    across all ranks. '''
+    across all ranks. """
+
     def __init__(self, sampler: Sampler, comm: CommunicationNetwork = None):
         self.sampler = sampler
         self.comm_size = comm.size if comm is not None else 1
@@ -54,6 +55,12 @@ class DistributedSampler(Sampler):
     def events(self):
         return self.sampler.events
 
+    def add_input_transformation(self, transform: Callable[[Any], Any]):
+        self.sampler.add_input_transformation(transform)
+
+    def add_label_transformation(self, transform: Callable[[Any], Any]):
+        self.sampler.add_label_transformation(transform)
+
 class PartitionedDataset(Dataset):
     """ Helper class for PartitionedDistributedSampler. """
     def __init__(self, dataset: Dataset, length: int, offset: int):
@@ -63,12 +70,6 @@ class PartitionedDataset(Dataset):
     
     def __len__(self):
         return self.len
-
-    def add_input_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
-        self.dataset.add_input_transformation(transform)
-
-    def add_label_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
-        self.dataset.add_label_transformation(transform)
 
     @property
     def input_node(self):

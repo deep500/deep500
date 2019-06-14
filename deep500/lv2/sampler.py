@@ -1,8 +1,8 @@
-'''Implements classes and methods related to sampling datasets.'''
+""" Implements classes and methods related to sampling datasets. """
 
-import math
 import numpy as np
-from typing import List
+import random
+from typing import Any, Callable, Dict, List
 from collections import Iterator
 from deep500.lv2.dataset import Dataset
 from deep500.lv2.event import SamplerEvent
@@ -11,29 +11,31 @@ Distribution = List[float]
 
 
 class Sampler(Iterator):
-    '''Base sampler class using Mersenne Twister pseudo-RNG.'''
+    """ Base sampler class. """
 
     def __init__(
-        self,
-        dataset: Dataset,
-        batch_size: int,
-        seed: int=None,
-        drop_last_batch: bool=True,
-        events: List[SamplerEvent] = []
+            self,
+            dataset: Dataset,
+            batch_size: int,
+            seed: int = None,
+            drop_last_batch: bool = True,
+            events: List[SamplerEvent] = None,
+            transformations: Callable[[Dict[str, Any]], Dict[str, Any]] = None
     ):
         self.dataset = dataset
         self.batch_size = batch_size
         self.seed = seed
         self.drop_last_batch = drop_last_batch
-        self.events = events
+        self.events = events or []
+        self.random_state = None
+        self.transformations = transformations or []
         self.reset()
 
     def as_operator(self):
-        """ Returns a CustomOperator that generates the input and (optionally) label,
-            to streamline data serving.
+        """ Returns a CustomOperator that generates the input and (optionally)
+            label, to streamline data serving.
         """
         raise NotImplementedError
-
 
     def __iter__(self):
         return self
@@ -53,17 +55,35 @@ class Sampler(Iterator):
         for event in self.events: event.on_sampler_reset(self)
         self.random_state = np.random.RandomState(self.seed)
 
+    def add_transformation(self, transform: Callable[[Dict[str, Any]], Any]):
+        """ Apply a transformation (e.g., data augmentation) on an input after
+            it is sampled.
+            @param transform: The transformation to apply on a minibatch.
+        """
+        self.transformations.append(transform)
+
+    def _transform(self, batch):
+        for transform in self.transformations:
+            batch = transform(batch)
+        # if len(self.transformations) == 0:
+        #     return batch
+        # return random.choice(self.transformations)(batch)
+        return batch
+
 
 class OrderedSampler(Sampler):
     """ The OrderedSampler samples the dataset in a sequential order. """
 
     def __init__(
-        self,
-        dataset: Dataset,
-        batch_size: int,
-        drop_last_batch: bool=True
+            self,
+            dataset: Dataset,
+            batch_size: int,
+            drop_last_batch: bool = True,
+            events: List[SamplerEvent] = None,
+            transformations: Callable[[Dict[str, Any]], Dict[str, Any]] = None
     ):
-        super().__init__(dataset, batch_size, 0)
+        super().__init__(dataset, batch_size, 0, drop_last_batch, events,
+                         transformations)
         self.batch_idx = 0
 
     def __next__(self):
@@ -76,6 +96,7 @@ class OrderedSampler(Sampler):
         batch = self.dataset[self.batch_idx:
                              min(self.batch_idx + self.batch_size,
                                  len(self.dataset))]
+        batch = self._transform(batch)
         self.batch_idx += self.batch_size
 
         for event in self.events: event.after_sampling(self, batch)
@@ -92,14 +113,18 @@ class ShuffleSampler(Sampler):
         each next call, it returns a continuous chunk of samples. """
 
     def __init__(
-        self,
-        dataset: Dataset,
-        batch_size: int,
-        seed: int=None,
-        drop_last_batch: bool=True
+            self,
+            dataset: Dataset,
+            batch_size: int,
+            seed: int = None,
+            drop_last_batch: bool = True,
+            events: List[SamplerEvent] = None,
+            transformations: Callable[[Dict[str, Any]], Dict[str, Any]] = None
     ):
         self.sample_pool = np.arange(len(dataset))
-        super().__init__(dataset, batch_size, seed)
+        self.batch_idx = 0
+        super().__init__(dataset, batch_size, seed, drop_last_batch,
+                         events, transformations)
 
     def __next__(self):
         for event in self.events: event.before_sampling(self, self.batch_size)
@@ -110,6 +135,7 @@ class ShuffleSampler(Sampler):
             raise StopIteration
         batch = self.dataset[self.sample_pool[self.batch_idx:min(
             self.batch_idx + self.batch_size, len(self.dataset))]]
+        batch = self._transform(batch)
         self.batch_idx += self.batch_size
 
         for event in self.events: event.after_sampling(self, batch)
@@ -123,25 +149,30 @@ class ShuffleSampler(Sampler):
 
 
 class ChoiceSampler(Sampler):
-    '''The ChoiceSampler class approximates any distribution, given as a list
+    """ The ChoiceSampler class approximates any distribution, given as a list
     of floats, one for each sample, that represent the probability of picking
     each one of them. By default, it approximates the uniform distribution.
-    Other distributions may be used if sampling with replacement is enabled.'''
+    Other distributions may be used if sampling with replacement is enabled. """
 
     def __init__(
-        self,
-        dataset: Dataset,
-        batch_size: int,
-        seed: int=None,
-        drop_last_batch: bool=True,
-        replacement: bool=False,
-        num_batches: int=-1,
-        distribution: Distribution=None
+            self,
+            dataset: Dataset,
+            batch_size: int,
+            seed: int = None,
+            drop_last_batch: bool = True,
+            replacement: bool = False,
+            num_batches: int = -1,
+            distribution: Distribution = None,
+            events: List[SamplerEvent] = None,
+            transformations: Callable[[Dict[str, Any]], Dict[str, Any]] = None
     ):
         self.replacement = replacement
         self.num_batches = num_batches
         self.distribution = distribution
-        super().__init__(dataset, batch_size, seed)
+        self.sample_pool = dataset
+        self.batch_idx = 0
+        super().__init__(dataset, batch_size, seed, drop_last_batch, events,
+                         transformations)
 
     def __next__(self):
         for event in self.events: event.before_sampling(self, self.batch_size)
@@ -163,6 +194,7 @@ class ChoiceSampler(Sampler):
         batch = list(self.random_state.choice(
             self.sample_pool, size=batch_size, replace=self.replacement
         ))
+        batch = self._transform(batch)
         self.sample_pool = [sample for sample in self.sample_pool
                             if sample not in batch]
 

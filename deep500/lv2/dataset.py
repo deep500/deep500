@@ -11,22 +11,6 @@ class Dataset(object):
     """  
     def __init__(self):
         pass
-        
-    def add_input_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
-        """
-        Apply a transformation (e.g., decoding, data augmentation) on each input before
-        it is sampled.
-        @param transform The transformation to apply (function with one input and one output)
-        """
-        raise NotImplementedError
-
-    def add_label_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
-        """
-        Apply a transformation (e.g., decoding, data augmentation) on each label before
-        it is sampled.
-        @param transform The transformation to apply (function with one input and one output)
-        """
-        raise NotImplementedError
 
     def __iter__(self):
         return self
@@ -44,61 +28,29 @@ class Dataset(object):
         raise NotImplementedError
 
 
-class Input(object):
-    def __init__(self, node_name: str, data: Any):
-        self.node_name = node_name
-        self.data = data
-
-        self.transformation = []
-
-    def add_transformation(self, transformation):
-        self.transformation.append(transformation)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, item):
-        data = self.data[item]
-        for transform in self.transformation:
-            data = transform(data)
-        return data
-        
-        
 class NumpyDataset(Dataset):
-    """ This class includes facilities to read a numpy ndarray-based labeled dataset. """  
-    def __init__(self, data: Input, labels: Optional[Input]):
+    """ This class includes facilities to read a numpy ndarray-based
+        labeled dataset.
+    """
+
+    def __init__(self, data: Any, data_node: str,
+                 labels: Optional[Any] = None,
+                 label_node: Optional[str] = None):
         super().__init__()
-        self.input_node = data.node_name
+        self.input_node = data_node
         self.index = 0
         
         self.data = data
 
         # If this dataset is labeled
         if labels is not None:
-            self.label_node = labels.node_name
+            self.label_node = label_node
             self.labels = labels
             assert (len(self.data) == len(self.labels))
         else:
             self.label_node = None
             self.labels = None
 
-    def add_input_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
-        """
-        Apply a transformation (e.g., decoding, data augmentation) on each input before
-        it is sampled.
-        @param transform The transformation to apply (function with one input and one output)
-        """
-        self.data.add_transformation(transform)
-
-    def add_label_transformation(self, transform: Callable[[np.ndarray], np.ndarray]):
-        """
-        Apply a transformation (e.g., decoding, data augmentation) on each label before
-        it is sampled.
-        @param transform The transformation to apply (function with one input and one output)
-        """
-        if self.labels is not None:
-            self.labels.add_transformation(transform)
-        
     def __getitem__(self, index) -> Dict[str, np.ndarray]:
         """ Returns a dictionary of the sample's graph node names to data.
             This includes the input and optionally the label.

@@ -44,7 +44,7 @@ from .lv1.validation import test_executor_inference, test_executor_backprop
 from .lv2.event import (TrainingEvent, OptimizerEvent, SamplerEvent, 
                         RunnerEvent, StopTraining)
 
-from .lv2.dataset import Input, Dataset, NumpyDataset
+from .lv2.dataset import Dataset, NumpyDataset
 from .lv2.sampler import Sampler, OrderedSampler, ShuffleSampler, ChoiceSampler
 from .lv2.optimizer import Optimizer, ThreeStepOptimizer, UpdateRuleOptimizer
 from .lv2.summaries import TrainingStatistics

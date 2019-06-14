@@ -6,7 +6,7 @@ import numpy as np
 import gzip
 
 from deep500.utils.download import real_download
-from deep500.lv2.dataset import Input, Dataset, NumpyDataset
+from deep500.lv2.dataset import Dataset, NumpyDataset
 from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
 
@@ -90,8 +90,8 @@ def _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=True
     train_lbl = train_lbl.astype(np.int32)
     test_lbl = test_lbl.astype(np.int32)
 
-    return (NumpyDataset(Input(data_node_name, train_img), Input(label_node_name, train_lbl)), 
-            NumpyDataset(Input(data_node_name, test_img), Input(label_node_name, test_lbl)))
+    return (NumpyDataset(train_img, data_node_name, train_lbl, label_node_name),
+            NumpyDataset(test_img, data_node_name, test_lbl, label_node_name))
 
 def load_mnist(data_node_name, label_node_name, *args, normalize=True, **kwargs) -> Tuple[Dataset, Dataset]:
     """ Returns the training and testing Dataset objects for MNIST.
