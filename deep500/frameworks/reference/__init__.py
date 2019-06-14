@@ -1,5 +1,6 @@
 from .optimizers import *
 from .custom_operators.base import custom_op, desc_from_tensor
+from .augmentation import *
 try:
     from .distributed_optimizers import *
 except ImportError:

@@ -2,6 +2,7 @@
     optimizer, with metrics for final test accuracy. """
 
 import deep500 as d5
+import deep500.frameworks.reference as d5ref
 from recipes.recipe import run_recipe
 
 # Using PyTorch as the framework
@@ -22,6 +23,12 @@ MUTABLE = {
     'executor': d5fw.from_model,
     'executor_kwargs': dict(device=d5.GPUDevice()),
     'train_sampler': d5.ShuffleSampler,
+    'train_sampler_kwargs': dict(transformations=[
+        d5ref.Crop('0', 'label', (32, 32),
+                   random_crop=True, padding=(4, 4)),
+        d5ref.RandomFlip('0', 'label'),
+        d5ref.Cutout('0', 'label', 1, 16)
+    ]),
     'optimizer': d5fw.MomentumOptimizer,
     'optimizer_args': (0.1, 0.9),
     'optimizer_kwargs': dict(weight_decay=1e-4),
