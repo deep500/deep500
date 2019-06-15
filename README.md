@@ -1,10 +1,9 @@
 Deep500: A Deep Learning Meta-Framework and HPC Benchmarking Library
 ====================================================================
 
-<p align="center">
-	![Deep500](deep500.svg)<br />
-    (or: 500 ways to train deep neural networks)
-</p>
+![Deep500](deep500.svg)
+<br />
+(or: 500 ways to train deep neural networks)
 
 
 Deep500 is a library that can be used to customize and measure anything with deep neural networks, using a clean, high-performant, and simple interface. Deep500 includes four levels of abstraction: (L0) Operators (layers); (L1) Network Evaluation; (L2) Training; and (L3) Distributed Training.
