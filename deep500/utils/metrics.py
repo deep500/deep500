@@ -248,7 +248,7 @@ class WallclockTime(TestMetric):
             raise ValueError('Number of reruns must be non-negative')
         if avg_over < 0:
             raise ValueError('Number of runs to average over must be non-negative')
-        if avg_over > reruns:
+        if avg_over > reruns and reruns > 0:
             avg_over = reruns
         self._reruns = reruns
         self._avg_over = avg_over

@@ -451,11 +451,11 @@ class Caffe2Visitor(d5.OnnxBaseVisitor):
         # network.train_model.AddGradientOperators([cross_entroy.output])
         network.output_dict[cross_entroy.output] = None
 
-    def visit_label_cross_entropy(self, label_cross_entropy: d5.ops.LabelCrossEntropy, network: Caffe2Network):
+    def visit_softmax_cross_entropy(self, label_cross_entropy: d5.ops.SoftmaxCrossEntropy, network: Caffe2Network):
         random_name = self.get_random_name()
 
-        network.train_net.LabelCrossEntropy(label_cross_entropy.input, random_name)
-        network.test_net.LabelCrossEntropy(label_cross_entropy.input, random_name)
+        network.train_net.SoftmaxCrossEntropy(label_cross_entropy.input, random_name)
+        network.test_net.SoftmaxCrossEntropy(label_cross_entropy.input, random_name)
 
         network.train_net.AveragedLoss(random_name, label_cross_entropy.output)
         network.test_net.AveragedLoss(random_name, label_cross_entropy.output)

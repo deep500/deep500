@@ -86,12 +86,14 @@ class Wide_ResNet(nn.Module):
         return out
 
 
-
-def export_wide_resnet(batch_size: int, depth=28, widen_factor=10, dropout=0.3, classes=10, 
-                       channels=3, height=32, width=32, file_path='wide_resnet.onnx', with_linear=True) -> str:
-    model = Wide_ResNet(depth, widen_factor, dropout, classes, channels, with_linear=with_linear)
-    dummy_input = Variable(torch.randn(batch_size, channels, height, width))
+def export_wide_resnet(batch_size: int, depth=28, widen_factor=10, dropout=0.3,
+                       classes=10, shape=(3, 32, 32),
+                       file_path='wide_resnet.onnx', with_linear=True) -> str:
+    model = Wide_ResNet(depth, widen_factor, dropout, classes, shape[0],
+                        with_linear=with_linear)
+    dummy_input = Variable(torch.randn(batch_size, *shape))
     model.apply(conv_init)
 
-    torch.onnx.export(model, dummy_input, file_path, verbose=True, training=True)
+    torch.onnx.export(model, dummy_input, file_path, verbose=True,
+                      training=True)
     return file_path

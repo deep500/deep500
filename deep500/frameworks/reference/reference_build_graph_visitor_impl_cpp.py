@@ -1,6 +1,6 @@
 from deep500.frameworks.reference.custom_operators.base import desc_from_tensor
 from deep500.frameworks.reference.custom_operators.custom_op_cpp import *
-from deep500.frameworks.reference.custom_operators.custom_op_python import SqueezeOp, UnsqueezeOp, MeanSquaredErrorOp, CrossEntropyOp, LabelCrossEntropyOp
+from deep500.frameworks.reference.custom_operators.custom_op_python import SqueezeOp, UnsqueezeOp, MeanSquaredErrorOp, CrossEntropyOp, SoftmaxCrossEntropyOp
 from deep500.frameworks.reference.custom_operators.python.conv_op_common import get_output_shape as get_output_shape_conv
 from deep500.frameworks.reference.custom_operators.python.pool_op_common import get_output_shape as get_output_shape_pool
 
@@ -646,14 +646,14 @@ class ReferenceBuildGraphVisitor(d5.OnnxBaseVisitor):
         op_name = 'cross_entropy (loss_op#%d)' % (self.loss_counter)
         network.losses[op.o_output] = (celayer, op, op_name)
 
-    def visit_label_cross_entropy(self, op: d5.ops.LabelCrossEntropy, network: ReferenceNetwork):
+    def visit_softmax_cross_entropy(self, op: d5.ops.SoftmaxCrossEntropy, network: ReferenceNetwork):
         X, target = network.variables[op.i_X], network.variables[op.i_target]
         input_desc = [desc_from_tensor(X), desc_from_tensor(target)] 
         L_shape = np.zeros(1, dtype=X.dtype)
         output_desc = [desc_from_tensor(L_shape)]
         network.variables[op.o_output] = L_shape
 
-        lcelayer = LabelCrossEntropyOp(
+        lcelayer = SoftmaxCrossEntropyOp(
             input_desc,
             output_desc
         )

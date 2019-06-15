@@ -1,7 +1,6 @@
 ####################################
 # General utilities
-from .utils.tensor_desc import TensorDescriptor, tensor_t
-tensordesc = TensorDescriptor
+from .utils.tensor_desc import TensorDescriptor, tensor_t, TensorDescriptor as tensordesc
 
 # Metrics and Events
 from .utils.metric import TestMetric
@@ -12,8 +11,8 @@ from .utils.metrics import NormDifference, L1Error, L2Error, MaxError, DiffHeatm
 from .utils.device import DeviceType, GPUDevice, CPUDevice
 
 # ONNX Visitor
-from .utils.onnx_interop.onnx_base_visitor import OnnxBaseVisitor  # throws error when op is not implemented
-from .utils.onnx_interop.onnx_base_visitor import EmptyOnnxBaseVisitor  # does not throw error when op is not implemented
+from .utils.onnx_interop.onnx_base_visitor import OnnxBaseVisitor  # raises error when op is not implemented
+from .utils.onnx_interop.onnx_base_visitor import EmptyOnnxBaseVisitor  # does not raise error when op is not implemented
 
 # ONNX Test Parser
 from .utils.onnx_interop import parser
@@ -45,16 +44,16 @@ from .lv1.validation import test_executor_inference, test_executor_backprop
 from .lv2.event import (TrainingEvent, OptimizerEvent, SamplerEvent, 
                         RunnerEvent, StopTraining)
 
-from .lv2.dataset import Input, Dataset, NumpyDataset
-from .lv2.sampler import Sampler, ShuffleSampler, ChoiceSampler   
+from .lv2.dataset import Dataset, NumpyDataset
+from .lv2.sampler import Sampler, OrderedSampler, ShuffleSampler, ChoiceSampler
 from .lv2.optimizer import Optimizer, ThreeStepOptimizer, UpdateRuleOptimizer
 from .lv2.summaries import TrainingStatistics
 
 # Training events and statistics generators
 import deep500.lv2.events as training_events
 
-# Runner
-from .lv2.runner import Runner, DefaultRunnerEvents
+# Trainer
+from .lv2.trainer import Trainer, DefaultTrainerEvents
 
 from .lv2.validation.metrics import TrainingAccuracy, TestAccuracy, DefaultTrainingMetrics, DatasetBias, SamplerEventMetric
 from .lv2.validation import test_optimizer, test_training, test_sampler

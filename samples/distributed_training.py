@@ -35,7 +35,7 @@ if __name__ == '__main__':
     # Create CNN using ONNX
     ds_cls, ds_c, ds_h, ds_w = d5ds.dataset_shape(dsname)
     onnx_file = d5net.export_network(netname, BATCH_SIZE, classes=ds_cls,
-                                        channels=ds_c, height=ds_h, width=ds_w)
+                                     shape=(ds_c, ds_h, ds_w))
     model = d5.parser.load_and_parse_model(onnx_file)
 
     # Recover input and output nodes (assuming only one input and one output)
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     
     # Create dataset and add loss function to model
     train_set, test_set = d5ds.load_dataset(dsname, INPUT_NODE, LABEL_NODE)
-    model.add_operation(d5.ops.LabelCrossEntropy([OUTPUT_NODE, LABEL_NODE], LOSS_NODE))
+    model.add_operation(d5.ops.SoftmaxCrossEntropy([OUTPUT_NODE, LABEL_NODE], LOSS_NODE))
 
 
     executor = d5tf.from_model(model)
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     #############################
 
     # Events: Only print progress on rank 0
-    events = d5.DefaultRunnerEvents(MAX_EPOCHS) if comm is None or comm.rank == 0 else []
+    events = d5.DefaultTrainerEvents(MAX_EPOCHS) if comm is None or comm.rank == 0 else []
 
     # Metrics: Add communication volume
     metrics = d5.DefaultTrainingMetrics() + [d5.CommunicationVolume()]

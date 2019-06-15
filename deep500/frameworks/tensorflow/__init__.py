@@ -7,7 +7,10 @@ from .op_validation import test_nativeop_forward, test_nativeop_gradient
 from .tf_graph_executor import *
 
 from .tf_optimizers import *
-from .tf_distributed_optimizer import HorovodDistributedOptimizer
+try:
+    from .tf_distributed_optimizer import HorovodDistributedOptimizer
+except ImportError:
+    pass
 
 import deep500 as d5
 

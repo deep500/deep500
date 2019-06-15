@@ -4,7 +4,8 @@ from typing import List, Tuple, Dict
 import numpy as np
 
 from deep500.utils.download import real_download, unzip
-from deep500.lv2.dataset import Input, NumpyDataset
+from deep500.lv2.dataset import NumpyDataset
+from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
 def download_cifar10_and_get_file_paths(folder=''):
     """
@@ -48,6 +49,11 @@ def cifar10_shape():
     return (10, *_cifar_shape())
 def cifar100_shape():
     return (100, *_cifar_shape())
+
+def cifar10_loss():
+    return SoftmaxCrossEntropy
+def cifar100_loss():
+    return cifar10_loss()
 
 cifar_mean = {
     'cifar10': (0.4914, 0.4822, 0.4465),
@@ -131,12 +137,17 @@ def _load_cifar(is_cifar100, input_node_name, label_node_name, normalize=True, f
         train_img, train_lbl, test_img, test_lbl = _cifar_numpy(
             train_batch, test_batch, 'cifar10', normalize)
 
-    return (NumpyDataset(Input(input_node_name, train_img), Input(label_node_name, train_lbl)), 
-            NumpyDataset(Input(input_node_name, test_img), Input(label_node_name, test_lbl)))
+    return (NumpyDataset(train_img, input_node_name, train_lbl, label_node_name),
+            NumpyDataset(test_img, input_node_name, test_lbl, label_node_name))
     
     
-def load_cifar10(input_node_name, label_node_name, *args, normalize=True, folder='', **kwargs):
-    return _load_cifar(False, input_node_name, label_node_name, normalize, folder)
+def load_cifar10(input_node_name, label_node_name, *args, normalize=True,
+                 folder='', **kwargs):
+    return _load_cifar(False, input_node_name, label_node_name, normalize,
+                       folder)
 
-def load_cifar100(input_node_name, label_node_name, *args, normalize=True, folder='', **kwargs):
-    return _load_cifar(True, input_node_name, label_node_name, normalize, folder)    
+
+def load_cifar100(input_node_name, label_node_name, *args, normalize=True,
+                  folder='', **kwargs):
+    return _load_cifar(True, input_node_name, label_node_name, normalize,
+                       folder)

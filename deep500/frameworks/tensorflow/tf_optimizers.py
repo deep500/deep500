@@ -4,6 +4,7 @@ from typing import Union
 from deep500.lv2.optimizer import FirstOrderOptimizer
 from .tf_graph_executor import TensorflowGraphExecutor
 
+
 class TFOptimizer(FirstOrderOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str):
         if not isinstance(executor, TensorflowGraphExecutor):
@@ -17,7 +18,13 @@ class TFOptimizer(FirstOrderOptimizer):
     def _fetch_or_constant(self, value: Union[str, float]):
         if isinstance(value, str):
             return self.network.fetch_internal_tensor(value)
-        return value
+        return tf.Variable(value, trainable=False)
+
+    def set_parameter(self, name, value, predicate=None):
+        if hasattr(self, name):
+            var: tf.Variable = getattr(self, name)
+            if predicate is None or predicate(var):
+                self.executor.session.run(var.assign(value))
 
     def step(self, inputs):
         # Lazy initialize operator
@@ -36,6 +43,7 @@ class GradientDescent(TFOptimizer):
         self.lr = self._fetch_or_constant(learning_rate)
         self.op = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
 
+
 class AdamOptimizer(TFOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str,
                  learning_rate: Union[str, float] = 0.001,
@@ -46,10 +54,11 @@ class AdamOptimizer(TFOptimizer):
         self.lr = self._fetch_or_constant(learning_rate)
         self.beta1 = self._fetch_or_constant(beta1)
         self.beta2 = self._fetch_or_constant(beta2)
-        self.epsilon = self._fetch_or_constant(epsilons)
+        self.epsilon = self._fetch_or_constant(epsilon)
         self.op = tf.train.AdamOptimizer(learning_rate=self.lr, 
                                          beta1=self.beta1, beta2=self.beta2,
                                          epsilon=self.epsilon)
+
 
 class RMSPropOptimizer(TFOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str,
@@ -66,7 +75,8 @@ class RMSPropOptimizer(TFOptimizer):
                                             decay=self.decay, 
                                             momentum=self.momentum, 
                                             epsilon=self.epsilon)
-        
+
+
 class AdaGradOptimizer(TFOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str,
                  learning_rate: Union[str, float],

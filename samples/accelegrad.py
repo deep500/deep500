@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
     # Create network and dataset
     net, innode, outnode = d5net.create_model('simple_cnn', batch_size)
-    net.add_operation(d5.ops.LabelCrossEntropy([outnode, 'label'], 'loss'))
+    net.add_operation(d5.ops.SoftmaxCrossEntropy([outnode, 'label'], 'loss'))
     train, test = d5ds.load_dataset('mnist', innode, 'label')
 
     # Create executor and optimizer

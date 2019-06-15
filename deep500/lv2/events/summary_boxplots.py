@@ -14,8 +14,8 @@ class BoxPlotGeneratorEvent(RunnerEvent):
 
         if len(training_stats.train_summaries) > 0 and (len(training_stats.train_summaries[0].time_used_inference) == 0
                 and len(training_stats.train_summaries[0].time_used_optimizing) == 0):
-            raise ValueError('To generate box-plots, please train the Runner '
-                             'object with collect_all_times=True')
+            raise ValueError('To generate box-plots, please train with the '
+                             'Trainer object with collect_all_times=True')
         
         inference_test_data = [s.time_used_inference for s in training_stats.test_summaries]
         optimizing_time_train = [s.time_used_optimizing for s in training_stats.train_summaries]

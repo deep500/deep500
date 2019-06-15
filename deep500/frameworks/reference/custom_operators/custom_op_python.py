@@ -6,7 +6,7 @@ from deep500.frameworks.reference.custom_operators.python.conv_op import ConvOp
 from deep500.frameworks.reference.custom_operators.python.crossentropy_op import CrossEntropyOp
 from deep500.frameworks.reference.custom_operators.python.gemm_op import GemmOp
 from deep500.frameworks.reference.custom_operators.python.globalaveragepool_op import GlobalAveragePoolOp
-from deep500.frameworks.reference.custom_operators.python.labelcrossentropy_op import LabelCrossEntropyOp
+from deep500.frameworks.reference.custom_operators.python.softmax_crossentropy_op import SoftmaxCrossEntropyOp
 from deep500.frameworks.reference.custom_operators.python.matmul_op import MatMulOp
 from deep500.frameworks.reference.custom_operators.python.maxpool_op import MaxPoolOp
 from deep500.frameworks.reference.custom_operators.python.meansquarederror_op import MeanSquaredErrorOp

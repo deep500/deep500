@@ -1,20 +1,26 @@
 import numpy as np
 import torch
-from torch import autograd, cuda, nn
+from torch import autograd
 from typing import List
 
 import deep500 as d5
 
 
 class PyTorchNetwork(d5.Network):
-    def __init__(self):
+    def __init__(self, device: d5.DeviceType):
         super(PyTorchNetwork, self).__init__()
         self.variables = {}
         self.inputs = {}
         self.outputs = {}
         self.optimizer_created = False
         self.grad_params = {}
-        self.cuda = cuda.is_available()
+        self.cuda = device.is_gpu()
+        if self.cuda:
+            torch.cuda.set_device(device.num)
+
+    @property
+    def parameters(self):
+        return [self.variables[k] for k in self.grad_params.keys()]
 
     def get_params(self):
         return list(self.grad_params.keys())
@@ -57,10 +63,10 @@ class PyTorchNetwork(d5.Network):
             tensors.append(var.numpy())
         return tensors
 
-    def fetch_tensor_internal(self, name):
-        return self.fetch_tensors_internal([name])[0]
+    def fetch_internal_tensor(self, name):
+        return self.fetch_internal_tensors([name])[0]
 
-    def fetch_tensors_internal(self, names):
+    def fetch_internal_tensors(self, names):
         return [self.variables.get(each_name) for each_name in names]
 
     def feed_tensor(self, name, new_value, device_option=None, is_param=False):

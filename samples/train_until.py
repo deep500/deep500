@@ -22,7 +22,7 @@ if __name__ == '__main__':
     # Create CNN using ONNX
     ds_cls, ds_c, ds_h, ds_w = d5ds.dataset_shape(dsname)
     onnx_file = d5net.export_network(netname, BATCH_SIZE, classes=ds_cls,
-                                     channels=ds_c, height=ds_h, width=ds_w)
+                                     shape=(ds_c, ds_h, ds_w))
     model = d5.parser.load_and_parse_model(onnx_file)
 
     # Recover input and output nodes (assuming only one input and one output)
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     
     # Create dataset and add loss function to model
     train_set, test_set = d5ds.load_dataset(dsname, INPUT_NODE, LABEL_NODE)
-    model.add_operation(d5.ops.LabelCrossEntropy([OUTPUT_NODE, LABEL_NODE], 'loss'))
+    model.add_operation(d5.ops.SoftmaxCrossEntropy([OUTPUT_NODE, LABEL_NODE], 'loss'))
 
     # Create executor and reference SGD optimizer
     executor = d5tf.from_model(model)
@@ -42,12 +42,12 @@ if __name__ == '__main__':
     test_sampler = d5.ShuffleSampler(test_set, BATCH_SIZE)
 
     # Create runner (training/test manager)
-    runner = d5.Runner(train_sampler, test_sampler, executor, optimizer,
-                       OUTPUT_NODE)
+    runner = d5.Trainer(train_sampler, test_sampler, executor, optimizer,
+                        OUTPUT_NODE)
     #############################
     
     # Set up events to stop training after reaching the desired test accuracy
-    events = d5.DefaultRunnerEvents(MAX_EPOCHS) + [
+    events = d5.DefaultTrainerEvents(MAX_EPOCHS) + [
         d5.training_events.AccuracyAbortEvent(accuracy)]
 
     # Run training/test loop

@@ -3,17 +3,17 @@ Abstract class for optimizers and stochastic optimizers.
 """
 import abc
 import numpy as np
-from typing import Dict, List
+from typing import Any, Callable, Dict, List
 
 from deep500.lv1.graph_executor import GraphExecutor
 from deep500.lv2.event import OptimizerEvent, StopTraining
 from deep500.lv2.sampler import Sampler
 
 
-
 class Optimizer(metaclass=abc.ABCMeta):
     """ Abstraction for optimization (e.g., Stochastic Gradient Descent) on a 
         graph executor. """
+
     def __init__(self, executor: GraphExecutor, loss: str = 'loss'):
         """ Initializes an abstract optimizer.
             @param executor Graph executor to use for training.
@@ -42,10 +42,24 @@ class Optimizer(metaclass=abc.ABCMeta):
         """
         raise ValueError('Single-stepping not supported')
 
+    def set_parameter(self, name: str, value: Any,
+                      predicate: Callable[[Any], bool] = None):
+        """ Set an optimizer hyperparameter (e.g., learning rate)
+            before or during optimization.
+            @param name: Hyperparameter name.
+            @param value: New value to set.
+            @param predicate: An optional predicate that receives the
+                              object to set, and returns True if it should be
+                              changed or False otherwise. Can be used to set
+                              different values for parameter groups.
+        """
+        raise NotImplementedError
+
     def as_operator(self):
         """ Returns a CustomOperator that runs an optimizer step.
         """
         raise NotImplementedError
+
 
 class FirstOrderOptimizer(Optimizer, metaclass=abc.ABCMeta):
     """ An optimizer that loops in steps when training. """
@@ -75,12 +89,13 @@ class FirstOrderOptimizer(Optimizer, metaclass=abc.ABCMeta):
                 sample = sampler() # Get sample
 
                 for event in events:
-                    event.before_optimizer_step(self.executor, sample)
+                    event.before_optimizer_step(self.executor, self, sample)
 
                 out = self.step(sample)
 
                 for event in events:
-                    event.after_optimizer_step(self.executor, out, out[self.loss])
+                    event.after_optimizer_step(self.executor, self, out,
+                                               out[self.loss])
         except StopIteration:
             # Dataset/sampler indicates that the set has ended
             pass
@@ -90,8 +105,10 @@ class FirstOrderOptimizer(Optimizer, metaclass=abc.ABCMeta):
 
         return out[self.loss]
 
+
 class ThreeStepOptimizer(FirstOrderOptimizer, metaclass=abc.ABCMeta):
-    """ An optimizer that applies updates in three steps, enabling distributed optimization. """
+    """ An optimizer that applies updates in three steps, enabling distributed
+        optimization. """
 
     def __init__(self, executor: GraphExecutor, loss: str = 'loss'):
         super(ThreeStepOptimizer, self).__init__(executor, loss)

@@ -30,7 +30,7 @@ class TerminalBarEvent(RunnerEvent, OptimizerEvent):
         else:
             self.bar.set_description('Training (epoch %d/%d)' % (self._epoch, self._total_epochs))
 
-    def after_optimizer_step(self, executor, outputs, loss):
+    def after_optimizer_step(self, executor, optimizer, outputs, loss):
         if self.stats.current_summary.wrong is not None:
             bs = self.runner.train_set.batch_size
             acc = (bs - self.stats.current_summary.wrong_batch[-1]) / bs

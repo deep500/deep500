@@ -9,19 +9,34 @@ from torch.nn import Module
 from deep500.frameworks.pytorch.pytorch_network import PyTorchNetwork
 from deep500.utils.onnx_interop.generated_operators import *
 from deep500.utils.onnx_interop.losses import *
-from deep500.utils.onnx_interop.onnx_objects import OnnxTensor, OnnxValueInfo
+from deep500.utils.onnx_interop.onnx_objects import (OnnxTensor,
+    OnnxFloatTensor, OnnxDoubleTensor, OnnxValueInfo)
 from deep500.utils.onnx_interop.onnx_base_visitor import OnnxBaseVisitor, EmptyOnnxBaseVisitor
+
+
+def _is_param(tensor: OnnxTensor):
+    """ A helper function to deal with an ONNX limitation - Tensors cannot be
+        designated as parameters or fixed. Returns True if the tensor should
+        be treated as a parameter (i.e., require gradients), or False
+        otherwise. """
+    if not isinstance(tensor, (OnnxFloatTensor, OnnxDoubleTensor)):
+        return False
+    if 'running_mean' in tensor.name or 'running_var' in tensor.name:
+        return False
+
+    return True
 
 
 class PyTorchMetaVisitor(EmptyOnnxBaseVisitor):
 
     def visit_initializer(self, each_initializer: OnnxTensor, network: PyTorchNetwork):
-        network.feed_tensor(each_initializer.name, each_initializer.get_data(), is_param=True)
+        network.feed_tensor(each_initializer.name, each_initializer.get_data(),
+                            is_param=_is_param(each_initializer))
 
     def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
         network.outputs[output.name] = output.name
 
-    def visit_label_cross_entropy(self, label_cross_entropy: LabelCrossEntropy, network: PyTorchNetwork):
+    def visit_softmax_cross_entropy(self, label_cross_entropy: SoftmaxCrossEntropy, network: PyTorchNetwork):
         network.outputs[label_cross_entropy.o_output] = label_cross_entropy.o_output
 
 
@@ -35,44 +50,69 @@ class PyTorchVisitor(OnnxBaseVisitor):
         self.optimizer = None
 
     def visit_constant(self, op: Constant, network: PyTorchNetwork):
-        network.feed_tensor(op.o_output, op.value.get_value())
+        network.feed_tensor(op.o_output, torch.tensor(op.value.get_value(), device='cpu'))
 
     def visit_add(self, op: Add, network: PyTorchNetwork):
-        A = network.fetch_tensor_internal(op.i_A)
-        B = network.fetch_tensor_internal(op.i_B)
+        A = network.fetch_internal_tensor(op.i_A)
+        B = network.fetch_internal_tensor(op.i_B)
         # if op.broadcast is not None and op.broadcast.get_value() != 0:
         #     B_new_shape = self.get_broadcast_shape(A, B, op.axis.get_value())
         #     B = B.view(B_new_shape)
         network.feed_tensor(op.o_C, A + B)
 
     def visit_abs(self, op: Abs, network: PyTorchNetwork):
-        X = network.fetch_tensors_internal([op.i_X])[0]
+        X = network.fetch_internal_tensors([op.i_X])[0]
         network.feed_tensor(op.o_Y, torch.abs(X))
 
     def visit_sub(self, op: Sub, network: PyTorchNetwork):
-        A, B = network.fetch_tensors_internal([op.i_A, op.i_B])
+        A, B = network.fetch_internal_tensors([op.i_A, op.i_B])
         A = torch.mul(A, (-1))
         network.feed_tensor(op.o_C, torch.add(A, B))
 
     def visit_pow(self, op: Pow, network: PyTorchNetwork):
-        X, Y = network.fetch_tensors_internal([op.i_X, op.i_Y])
+        X, Y = network.fetch_internal_tensors([op.i_X, op.i_Y])
         network.feed_tensor(op.o_Z, torch.pow(X, Y))
 
     def visit_reshape(self, op: Reshape, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_data)
+        X = network.fetch_internal_tensor(op.i_data)
         S = list(network.fetch_tensor(op.i_shape))
         network.feed_tensor(op.o_reshaped, X.view(S))
 
     def visit_conv(self, op: Conv, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_X)
-        W = network.fetch_tensor_internal(op.i_W)
-        B = None if op.i_B is None else network.fetch_tensor_internal(op.i_B)
+        X = network.fetch_internal_tensor(op.i_X)
+        W = network.fetch_internal_tensor(op.i_W)
+        B = None if op.i_B is None else network.fetch_internal_tensor(op.i_B)
         args = self.get_conv_base(op)
         result = F.conv2d(X, W, B, **args)
         network.feed_tensor(op.o_Y, result)
 
+    def visit_pad(self, op, network: PyTorchNetwork):
+        data = network.fetch_internal_tensor(op.i_data)
+        result = F.pad(data, op.pads.value, mode=op.mode.value, value=op.value.value)
+        network.feed_tensor(op.o_output, result)
+
+    def visit_shape(self, op, network: PyTorchNetwork):
+        data = network.fetch_internal_tensor(op.i_data)
+        network.feed_tensor(op.o_shape, torch.tensor(data.shape))
+
+    def visit_gather(self, op, network: PyTorchNetwork):
+        input = network.fetch_internal_tensor(op.i_data)
+        indices = network.fetch_internal_tensor(op.i_indices).cpu()
+        results = torch.gather(
+            input,
+            op.axis.value,
+            indices)
+        network.feed_tensor(op.o_output, results)
+
+    def visit_unsqueeze(self, op, network: PyTorchNetwork):
+        data = network.fetch_internal_tensor(op.i_data)
+        result = data
+        for axis in op.axes.value:
+            result = torch.unsqueeze(result, axis)
+        network.feed_tensor(op.o_expanded, result)
+
     def visit_lrn(self, op, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_X)
+        X = network.fetch_internal_tensor(op.i_X)
         result = F.local_response_norm(
             X,
             op.size.value,
@@ -82,18 +122,18 @@ class PyTorchVisitor(OnnxBaseVisitor):
         network.feed_tensor(op.o_Y, result)
 
     def visit_split(self, op, network):
-        input = network.fetch_tensor_internal(op.i_input)
+        input = network.fetch_internal_tensor(op.i_input)
         results = torch.split(input, op.split.value, dim=op.axis.value)
         for res,out in zip(results, op.output):
             network.feed_tensor(out, res)
 
     def visit_concat(self, op, network):
-        in_tensors = [network.fetch_tensor_internal(i) for i in op.input]
+        in_tensors = [network.fetch_internal_tensor(i) for i in op.input]
         out = torch.cat(in_tensors, dim=op.axis.value)
         network.feed_tensor(op.output[0], out)
 
     def visit_maxpool(self, op: MaxPool, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_X)
+        X = network.fetch_internal_tensor(op.i_X)
         args = {}
         if hasattr(op, 'kernel_shape') and op.kernel_shape:
             args['kernel_size'] = op.kernel_shape.get_value()
@@ -105,19 +145,19 @@ class PyTorchVisitor(OnnxBaseVisitor):
         network.feed_tensor(op.o_Y, result)
 
     def visit_averagepool(self, op: AveragePool, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_X)
+        X = network.fetch_internal_tensor(op.i_X)
         args = {}
         if hasattr(op, 'kernel_shape') and op.kernel_shape:
             args['kernel_size'] = op.kernel_shape.get_value()
         if hasattr(op, 'strides') and op.strides:
             args['stride'] = op.strides.get_value()[0]
         if hasattr(op, 'pads') and op.pads:
-            args['pads'] = op.pads.get_value()[0]
+            args['padding'] = op.pads.get_value()[0]
         result = F.avg_pool2d(X, **args)
         network.feed_tensor(op.o_Y, result)
 
     def visit_gemm(self, op: Gemm, network: PyTorchNetwork):
-        A, B, C = network.fetch_tensors_internal([op.i_A, op.i_B, op.i_C])
+        A, B, C = network.fetch_internal_tensors([op.i_A, op.i_B, op.i_C])
         trans_a = 0 if op.transA is None else op.transA.get_value()
         trans_b = 0 if op.transB is None else op.transB.get_value()
 
@@ -135,28 +175,33 @@ class PyTorchVisitor(OnnxBaseVisitor):
         result = torch.add(A, C)
         network.feed_tensor(op.o_Y, result)
 
-    def visit_label_cross_entropy(self, op: LabelCrossEntropy, network: PyTorchNetwork):
-        X, label = network.fetch_tensors_internal([op.i_X, op.i_target])
+    def visit_softmax_cross_entropy(self, op: SoftmaxCrossEntropy, network: PyTorchNetwork):
+        X, label = network.fetch_internal_tensors([op.i_X, op.i_target])
         network.feed_tensor(op.o_output, F.cross_entropy(X, label.long()))
 
     def visit_relu(self, op: Relu, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_X)
+        X = network.fetch_internal_tensor(op.i_X)
         network.feed_tensor(op.o_Y, F.relu(X))
 
     def visit_softmax(self, op: Softmax, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_input)
+        X = network.fetch_internal_tensor(op.i_input)
         network.feed_tensor(op.o_output, F.relu(X))
 
     def visit_batchnormalization(self, op: BatchNormalization, network: PyTorchNetwork):
-        X = network.fetch_tensor_internal(op.i_X)
-        mean = network.fetch_tensor_internal(op.i_mean)
-        var = network.fetch_tensor_internal(op.i_var)
-        weight = network.fetch_tensor_internal(op.i_scale)
-        B = network.fetch_tensor_internal(op.i_B)
+        X = network.fetch_internal_tensor(op.i_X)
+        mean = network.fetch_internal_tensor(op.i_mean)
+        var = network.fetch_internal_tensor(op.i_var)
+        weight = network.fetch_internal_tensor(op.i_scale)
+        B = network.fetch_internal_tensor(op.i_B)
         epsilon = op.epsilon.get_value() if op.epsilon else 1e-5
-        momentum = op.momentum.get_value() if op.momentum else 0.1
+        momentum = op.momentum.get_value() if op.momentum else 0.9
 
-        network.feed_tensor(op.o_Y, F.batch_norm(X, mean, var, weight, B, momentum=momentum, eps=epsilon))
+        # PyTorch uses the complement momentum
+        momentum = 1. - momentum
+
+        network.feed_tensor(op.o_Y, F.batch_norm(X, mean, var, weight, B,
+                                                 momentum=momentum,
+                                                 eps=epsilon))
 
     def get_conv_base(self, op):
         args = {}

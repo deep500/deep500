@@ -1,9 +1,21 @@
+import abc
 import numpy as np
 
 import deep500 as d5
 
 
-class GradientDescent(d5.UpdateRuleOptimizer):
+class ReferenceOptimizer(d5.Optimizer, abc.ABC):
+    def set_parameter(self, name, value, predicate=None):
+        if hasattr(self, name):
+            if predicate is None or predicate(getattr(self, name)):
+                setattr(self, name, value)
+
+    def as_operator(self):
+        # TODO: Implement
+        return None
+
+
+class GradientDescent(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 
     def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.1):
         super().__init__(executor, loss)
@@ -13,7 +25,7 @@ class GradientDescent(d5.UpdateRuleOptimizer):
         return old_param - self.lr * grad
 
 
-class MomentumOptimizer(d5.UpdateRuleOptimizer):
+class MomentumOptimizer(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 
     def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.01, momentum=0.1):
         super().__init__(executor, loss)
@@ -37,9 +49,10 @@ class MomentumOptimizer(d5.UpdateRuleOptimizer):
         return self.accumulation[grad_name]
 
 
-class AdamOptimizer(d5.ThreeStepOptimizer):
+class AdamOptimizer(d5.ThreeStepOptimizer, ReferenceOptimizer):
 
-    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-08):
+    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.001,
+                 beta1=0.9, beta2=0.999, epsilon=1e-08):
         super().__init__(executor, loss)
         self.lr = lr
         self.beta1 = beta1
@@ -65,7 +78,8 @@ class AdamOptimizer(d5.ThreeStepOptimizer):
         # compute bias corrected second raw moment estimate
         corrected_second_moment = second_moment / (1 - self.beta2 ** self.t)
         # update parameters
-        new_param = old_param - self.lr * corrected_first_moment / (np.sqrt(corrected_second_moment + self.epsilon))
+        new_param = old_param - self.lr * corrected_first_moment / (
+            np.sqrt(corrected_second_moment + self.epsilon))
         return new_param
 
     def get_first_momentum(self, param_name):
@@ -79,8 +93,9 @@ class AdamOptimizer(d5.ThreeStepOptimizer):
         return self.second_momentum[param_name]
 
 
-class AdaGradOptimizer(d5.UpdateRuleOptimizer):
-    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=1e-2, eps=1e-6):
+class AdaGradOptimizer(d5.UpdateRuleOptimizer, ReferenceOptimizer):
+    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=1e-2,
+                 eps=1e-6):
         super().__init__(executor, loss)
         self.lr = lr
         self.eps = eps
@@ -90,14 +105,16 @@ class AdaGradOptimizer(d5.UpdateRuleOptimizer):
         outputs = self.executor.network.inference_and_backprop(inputs)
         gradients = self.executor.network.gradient()
         for (param_name, grad_name) in gradients:
-            param, grad = self.executor.network.fetch_tensors([param_name, grad_name])
+            param, grad = self.executor.network.fetch_tensors([param_name,
+                                                               grad_name])
             param = self.new_param(grad, param, param_name)
             self.executor.network.feed_tensor(param_name, param)
 
         return outputs
 
     def new_param(self, grad, old_param, param_name):
-        squared_grad = self.squares[param_name] if param_name in self.squares else np.zeros(grad.shape)
+        squared_grad = self.squares[param_name] if param_name in self.squares \
+            else np.zeros(grad.shape)
         squared_grad += np.linalg.norm(grad) ** 2
         self.squares[param_name] = squared_grad
         adjusted_lr = self.lr / (self.eps + np.sqrt(squared_grad))
