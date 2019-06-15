@@ -31,10 +31,8 @@ class PyTorchOptimizer(FirstOrderOptimizer):
     def step(self, inputs):
         def closure():
             self.op.zero_grad()
-            self.executor.network._feed_input(inputs)
-            self.executor.model.accept(self.visitor, self.executor.network)
-            loss = self.executor.network.variables[self.loss]
-            loss.backward()
+            loss = self.executor.inference_and_backprop_internal(inputs,
+                                                                 self.loss)
             return loss
 
         result = {self.loss: self.op.step(closure).item()}

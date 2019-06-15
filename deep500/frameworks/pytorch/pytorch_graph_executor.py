@@ -1,12 +1,13 @@
 from typing import Dict, List
 
 import numpy as np
-import torch
+import torch.nn
 
 import deep500 as d5
 
-from .pytorch_network import PyTorchNetwork
+from .pytorch_network import PyTorchNetwork, PyTorchNativeNetwork
 from .pytorch_visitor import PyTorchMetaVisitor, PyTorchVisitor
+
 
 class PyTorchGraphExecutor(d5.GraphExecutor):
 
@@ -71,3 +72,89 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
             event.after_backprop(output)
             
         return output
+
+    def inference_and_backprop_internal(self, inputs: Dict[str, np.ndarray],
+                                        loss: str):
+        self.network._feed_input(inputs)
+        self.model.accept(self.visitor, self.network)
+        loss = self.network.variables[loss]
+        loss.backward()
+        return loss
+
+
+class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
+    def __init__(self, module: torch.nn.Module, loss: torch.nn.Module,
+                 input_node_name='0',
+                 output_node_name='output', label_node_name='label',
+                 loss_node_name='loss',
+                 events: List[d5.ExecutorEvent] = [],
+                 device: d5.DeviceType = None, with_outputs = False):
+        """ Creates a graph executor of an existing TF graph.
+            @param loss_node A Tensorflow Tensor or Operation object.
+            @param session An existing Tensorflow session.
+            @param events A list of events to invoke.
+        """
+        # Do not call super() here!
+        self.network = PyTorchNativeNetwork(module)
+        self.devname = 'cuda' if device is None or device.is_gpu() else 'cpu'
+        self.events = events
+        self.model = module.to(self.devname)
+        self.loss = loss.to(self.devname)
+        self.innode = input_node_name
+        self.outnode = output_node_name
+        self.labelnode = label_node_name
+        self.lossnode = loss_node_name
+        self.with_outputs = with_outputs
+        self.network.outputs = []
+
+    def setup(self):
+        pass
+
+    def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        for event in self.events:
+            event.before_executor(input)
+
+        y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
+                                device=self.devname)
+        output = self.model(torch.from_numpy(input[self.innode]).to(self.devname))
+        loss = self.loss(output, y_tensor)
+
+        outputs = {self.outnode: output.detach().cpu().numpy(),
+                   self.lossnode: loss.detach().cpu().numpy()}
+        for event in self.events:
+            event.after_inference(outputs)
+
+        return outputs
+
+    def inference_and_backprop(self, input: Dict[str, np.ndarray],
+                               y: str = 'loss') -> Dict[str, np.ndarray]:
+        for event in self.events:
+            event.before_executor(input)
+
+        self.model.zero_grad()
+        y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
+                                device=self.devname)
+        output = self.model(torch.from_numpy(input[self.innode]).to(self.devname))
+        loss = self.loss(output, y_tensor)
+        loss.backward()
+
+        outputs = {self.outnode: output.detach().cpu().numpy(),
+                   y: loss.detach().cpu().numpy()}
+        if self.with_outputs:
+            outputs.update({('%s_grad' % p): p.grad.detach().numpy()
+                            for p in self.model.parameters()})
+
+        for event in self.events:
+            event.after_backprop(outputs)
+
+        return outputs
+
+    def inference_and_backprop_internal(self, inputs: Dict[str, np.ndarray],
+                                        loss: str):
+        self.model.zero_grad()
+        y_tensor = torch.tensor(inputs[self.labelnode], dtype=torch.long,
+                                device=self.devname)
+        output = self.model(torch.from_numpy(inputs[self.innode]).to(self.devname))
+        loss = self.loss(output, y_tensor)
+        loss.backward()
+        return loss

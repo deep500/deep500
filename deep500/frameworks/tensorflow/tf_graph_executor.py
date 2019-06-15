@@ -121,15 +121,18 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
 
         return result
 
+
 class TensorflowNativeGraphExecutor(TensorflowGraphExecutor):
-    def __init__(self, loss_node, output_node_name='output', session=None, events: List[d5.ExecutorEvent] = []):
+    def __init__(self, loss_node, output_node_name='output', session=None,
+                 events: List[d5.ExecutorEvent] = [],
+                 device: d5.DeviceType = None):
         """ Creates a graph executor of an existing TF graph.
             @param loss_node A Tensorflow Tensor or Operation object.
             @param session An existing Tensorflow session.
             @param events A list of events to invoke.
         """
         # Do not call super() here!
-        self.network = TensorflowNetwork(d5.GPUDevice())
+        self.network = TensorflowNetwork(device or d5.GPUDevice())
         self.events = events
         self.sess = session
         self.model = loss_node

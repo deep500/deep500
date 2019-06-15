@@ -81,3 +81,12 @@ class PyTorchNetwork(d5.Network):
 
         if is_param:
             self.grad_params[name] = "grad_" + name
+
+
+class PyTorchNativeNetwork(PyTorchNetwork):
+    def __init__(self, module: torch.nn.Module):
+        self.module = module
+
+    @property
+    def parameters(self):
+        return self.module.parameters()
