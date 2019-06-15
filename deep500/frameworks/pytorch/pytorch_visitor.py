@@ -194,9 +194,14 @@ class PyTorchVisitor(OnnxBaseVisitor):
         weight = network.fetch_internal_tensor(op.i_scale)
         B = network.fetch_internal_tensor(op.i_B)
         epsilon = op.epsilon.get_value() if op.epsilon else 1e-5
-        momentum = op.momentum.get_value() if op.momentum else 0.1
+        momentum = op.momentum.get_value() if op.momentum else 0.9
 
-        network.feed_tensor(op.o_Y, F.batch_norm(X, mean, var, weight, B, momentum=momentum, eps=epsilon))
+        # PyTorch uses the complement momentum
+        momentum = 1. - momentum
+
+        network.feed_tensor(op.o_Y, F.batch_norm(X, mean, var, weight, B,
+                                                 momentum=momentum,
+                                                 eps=epsilon))
 
     def get_conv_base(self, op):
         args = {}

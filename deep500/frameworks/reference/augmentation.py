@@ -1,7 +1,7 @@
 """ File containing various reference data augmentation transformations for
     Deep500 Samplers. """
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 import numpy as np
 import random
 import PIL.Image
@@ -75,6 +75,8 @@ class Crop(SingleSampleAugmentation):
             pad_tuple = [(0, 0)] + [(p, p) for p in self.padding]
             sample = np.pad(sample, pad_tuple, 'constant',
                             constant_values=self.fill)
+            h += 2*self.padding[0]
+            w += 2*self.padding[1]
 
         crop_y, crop_x = self.crop_size
 
@@ -96,6 +98,22 @@ class Crop(SingleSampleAugmentation):
             sample = np.array(resized).astype(sample.dtype) / 256.0
             sample = sample.transpose(1, 2, 0)
 
+        return sample, label
+
+
+class Normalize(SingleSampleAugmentation):
+    """ Normalize samples according to given channel-wise mean/stddev. """
+    def __init__(self, input_node: str, label_node: str,
+                 mean: Union[float, Tuple[float, ...]] = 0.0,
+                 stddev: Union[float, Tuple[float, ...]] = 1.0):
+        super().__init__(input_node, label_node)
+        self.mean = mean
+        self.stddev = stddev
+
+    def augment_sample(self, sample: np.ndarray, label: np.ndarray):
+        for dim in range(sample.shape[0]):
+            sample[dim] -= self.mean[dim]
+            sample[dim] /= self.stddev[dim]
         return sample, label
 
 
