@@ -76,7 +76,7 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
     def inference_and_backprop_internal(self, inputs: Dict[str, np.ndarray],
                                         loss: str):
         self.network._feed_input(inputs)
-        self.model.accept(self.visitor, self.network)
+        self.model.accept(PyTorchVisitor(), self.network)
         loss = self.network.variables[loss]
         loss.backward()
         return loss
@@ -99,7 +99,7 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
         self.devname = 'cuda' if device is None or device.is_gpu() else 'cpu'
         self.events = events
         self.model = module.to(self.devname)
-        self.loss = loss.to(self.devname)
+        self.loss = loss.to(self.devname) if loss is not None else None
         self.innode = input_node_name
         self.outnode = output_node_name
         self.labelnode = label_node_name
@@ -114,13 +114,16 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
         for event in self.events:
             event.before_executor(input)
 
-        y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
-                                device=self.devname)
         output = self.model(torch.from_numpy(input[self.innode]).to(self.devname))
-        loss = self.loss(output, y_tensor)
+        if self.loss is not None:
+            y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
+                                    device=self.devname)
+            loss = self.loss(output, y_tensor)
+            outputs = {self.outnode: output.detach().cpu().numpy(),
+                       self.lossnode: loss.detach().cpu().numpy()}
+        else:
+            outputs = {self.outnode: output.detach().cpu().numpy()}
 
-        outputs = {self.outnode: output.detach().cpu().numpy(),
-                   self.lossnode: loss.detach().cpu().numpy()}
         for event in self.events:
             event.after_inference(outputs)
 

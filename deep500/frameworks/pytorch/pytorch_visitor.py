@@ -203,6 +203,12 @@ class PyTorchVisitor(OnnxBaseVisitor):
                                                  momentum=momentum,
                                                  eps=epsilon))
 
+    def visit_dropout(self, op: Dropout, network: PyTorchNetwork):
+        data = network.fetch_internal_tensor(op.i_data)
+        # In PyTorch, mask is not directly output (as opposed to the
+        # ONNX standard)
+        network.feed_tensor(op.o_output, F.dropout(data, op.ratio.value))
+
     def get_conv_base(self, op):
         args = {}
         if hasattr(op, 'strides') and op.strides:
