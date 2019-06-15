@@ -10,15 +10,22 @@ import PIL.Image
 class DataAugmentation(object):
     """ Represents a general data augmentation for supervised learning. """
 
-    def __init__(self, input_node: str, label_node: str):
+    def __init__(self):
+        self.input = None
+        self.label = None
+
+    def set_dataset_nodes(self, input_node: str, label_node: str = None):
+        """ Resets dataset graph node names.
+            @param input_node: The node where input data should be fed to.
+            @param label_node: (optional) The target of the optimization
+                               (e.g., label).
+        """
         self.input = input_node
         self.label = label_node
 
 
 class SingleSampleAugmentation(DataAugmentation):
     """ Data augmentation class that works individually per sample. """
-    def __init__(self, input_node: str, label_node: str):
-        super().__init__(input_node, label_node)
 
     def augment_sample(self, sample: Any, label: Any):
         """ Augments a single sample.
@@ -39,8 +46,8 @@ class SingleSampleAugmentation(DataAugmentation):
 class ReplicateBatch(DataAugmentation):
     """ Replicates samples and labels in minibatch for a specified number of
         times. """
-    def __init__(self, input_node: str, label_node: str, duplicates: int):
-        super().__init__(input_node, label_node)
+    def __init__(self, duplicates: int):
+        super().__init__()
         self.duplicates = duplicates
 
     def __call__(self, batch: Dict[str, np.ndarray]):
@@ -56,11 +63,11 @@ class ReplicateBatch(DataAugmentation):
 class Crop(SingleSampleAugmentation):
     """ Random/center image crop augmentation with optional constant
         padding. """
-    def __init__(self, input_node: str, label_node: str,
+    def __init__(self,
                  crop_size: Tuple[int, int],
                  resize: bool = False, random_crop: bool = False,
                  padding: Tuple[int, int] = None, fill: Any = 0):
-        super().__init__(input_node, label_node)
+        super().__init__()
         self.crop_size = crop_size
         self.resize = resize
         self.random_crop = random_crop
@@ -103,10 +110,10 @@ class Crop(SingleSampleAugmentation):
 
 class Normalize(SingleSampleAugmentation):
     """ Normalize samples according to given channel-wise mean/stddev. """
-    def __init__(self, input_node: str, label_node: str,
+    def __init__(self,
                  mean: Union[float, Tuple[float, ...]] = 0.0,
                  stddev: Union[float, Tuple[float, ...]] = 1.0):
-        super().__init__(input_node, label_node)
+        super().__init__()
         self.mean = mean
         self.stddev = stddev
 
@@ -120,9 +127,9 @@ class Normalize(SingleSampleAugmentation):
 class RandomFlip(SingleSampleAugmentation):
     """ Flip an input randomly according to a specific axis and probability. """
 
-    def __init__(self, input_node: str, label_node: str, axis: int = -1,
+    def __init__(self, axis: int = -1,
                  p: float = 0.5):
-        super().__init__(input_node, label_node)
+        super().__init__()
         self.p = p
         self.axis = axis
 
@@ -138,13 +145,15 @@ class Cutout(SingleSampleAugmentation):
         Args:
             holes (int): Number of patches to cut out of each image.
             length (int): The length (in pixels) of each square patch.
+            random_fill (bool): If True, fills hole with random values.
     """
 
-    def __init__(self, input_node: str, label_node: str, holes: int,
-                 length: int):
-        super().__init__(input_node, label_node)
+    def __init__(self, holes: int = 1, length: int = 16,
+                 random_fill: bool = False):
+        super().__init__()
         self.holes = holes
         self.length = length
+        self.random = random_fill
 
     def augment_sample(self, sample: np.ndarray, label: np.ndarray):
         c, h, w = sample.shape
@@ -161,4 +170,10 @@ class Cutout(SingleSampleAugmentation):
 
             mask[y1: y2, x1: x2] = 0.
 
-        return (sample[:, :, :] * mask), label
+        if self.random:
+            masked = sample[:, :, :] * mask
+            masked += (1. - mask) * (
+                    np.random.rand(c, h, w) - 0.5)
+            return masked, label
+        else:
+            return (sample[:, :, :] * mask), label

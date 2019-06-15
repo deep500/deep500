@@ -24,10 +24,9 @@ MUTABLE = {
     'executor_kwargs': dict(device=d5.GPUDevice()),
     'train_sampler': d5.ShuffleSampler,
     'train_sampler_kwargs': dict(transformations=[
-        d5ref.Crop('0', 'label', (32, 32),
-                   random_crop=True, padding=(4, 4)),
-        d5ref.RandomFlip('0', 'label'),
-        d5ref.Cutout('0', 'label', 1, 16)
+        d5ref.Crop((32, 32), random_crop=True, padding=(4, 4)),
+        d5ref.RandomFlip(),
+        d5ref.Cutout(1, 16),
     ]),
     'optimizer': d5fw.MomentumOptimizer,
     'optimizer_args': (0.1, 0.9),

@@ -10,7 +10,8 @@ class Dataset(object):
         (optimizer, for example).
     """  
     def __init__(self):
-        pass
+        self.input_node = None
+        self.label_node = None
 
     def __iter__(self):
         return self

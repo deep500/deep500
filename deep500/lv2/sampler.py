@@ -29,6 +29,10 @@ class Sampler(Iterator):
         self.events = events or []
         self.random_state = None
         self.transformations = transformations or []
+        for transform in self.transformations:
+            if hasattr(transform, 'set_dataset_nodes'):
+                transform.set_dataset_nodes(self.dataset.input_node,
+                                            self.dataset.label_node)
         self.reset()
 
     def as_operator(self):
@@ -60,6 +64,9 @@ class Sampler(Iterator):
             it is sampled.
             @param transform: The transformation to apply on a minibatch.
         """
+        if hasattr(transform, 'set_dataset_nodes'):
+            transform.set_dataset_nodes(self.dataset.input_node,
+                                        self.dataset.label_node)
         self.transformations.append(transform)
 
     def _transform(self, batch):
