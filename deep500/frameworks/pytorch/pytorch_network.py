@@ -90,3 +90,21 @@ class PyTorchNativeNetwork(PyTorchNetwork):
     @property
     def parameters(self):
         return self.module.parameters()
+
+    def gradient(self, y: str = 'loss'):
+        return [(p, p.grad) for p in self.module.parameters()]
+
+    def fetch_tensors(self, tensors):
+        result = []
+        for tensor in tensors:
+            var = tensor
+            if var is None:
+                print('Trying to fetch a None tensor')
+                result.append(None)
+                continue
+            result.append(var.detach().cpu().numpy())
+        return result
+
+    def feed_tensor(self, param, new_value, device_option=None, is_param=False):
+        with torch.no_grad():
+            param[:] = torch.from_numpy(new_value)
