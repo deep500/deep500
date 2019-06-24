@@ -1,5 +1,6 @@
 from .mnist import *
 from .cifar import *
+from .ucf101 import *
 from .imagenet import *
 
 

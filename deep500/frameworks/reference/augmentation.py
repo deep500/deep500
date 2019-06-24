@@ -38,9 +38,10 @@ class SingleSampleAugmentation(DataAugmentation):
     def __call__(self, batch: Dict[str, np.ndarray]):
         samples = batch[self.input]
         labels = batch[self.label]
-        for i in range(samples.shape[0]):
-            samples[i], labels[i] = self.augment_sample(samples[i], labels[i])
-        return batch
+        augmented = list(zip(*[self.augment_sample(s, l) for s, l in zip(samples, labels)]))
+
+        return {self.input: np.asarray(augmented[0]),
+                self.label: np.asarray(augmented[1])}
 
 
 class ReplicateBatch(DataAugmentation):
