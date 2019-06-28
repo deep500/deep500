@@ -11,26 +11,34 @@ def DefaultTrainingMetrics():
 
 # Training metrics
 class TrainingAccuracy(RunnerEvent, TestMetric):
-    def __init__(self):
+    def __init__(self, max_acc=False):
         super().__init__()
         self.accuracy = -1.0
+        self.max_acc = max_acc
 
     def after_training(self, runner, training_stats: TrainingStatistics):
         if len(training_stats.train_summaries) > 0:
-            self.accuracy = training_stats.train_summaries[-1].accuracy
+            if self.max_acc:
+                self.accuracy = max(s.accuracy for s in training_stats.train_summaries)
+            else:
+                self.accuracy = training_stats.train_summaries[-1].accuracy
 
     def measure(self, unused_inputs, unused_outputs, unused_ref) -> float:
         return self.accuracy
 
 
 class TestAccuracy(RunnerEvent, TestMetric):
-    def __init__(self):
+    def __init__(self, max_acc=False):
         super().__init__()
         self.accuracy = -1.0
+        self.max_acc = max_acc
 
     def after_training(self, runner, training_stats: TrainingStatistics):
         if len(training_stats.test_summaries) > 0:
-            self.accuracy = training_stats.test_summaries[-1].accuracy
+            if self.max_acc:
+                self.accuracy = max(s.accuracy for s in training_stats.test_summaries)
+            else:
+                self.accuracy = training_stats.test_summaries[-1].accuracy
 
     def measure(self, unused_inputs, unused_outputs, unused_ref) -> float:
         return self.accuracy
