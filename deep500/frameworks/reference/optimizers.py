@@ -17,8 +17,8 @@ class ReferenceOptimizer(d5.Optimizer, abc.ABC):
 
 class GradientDescent(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 
-    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.1):
-        super().__init__(executor, loss)
+    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.1, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = lr
 
     def update_rule(self, grad, old_param, param_name):
@@ -27,8 +27,9 @@ class GradientDescent(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 
 class MomentumOptimizer(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 
-    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.01, momentum=0.1):
-        super().__init__(executor, loss)
+    def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.01, momentum=0.1,
+                 **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = lr
         self.momentum = momentum
         self.accumulation = {}
@@ -37,6 +38,7 @@ class MomentumOptimizer(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 
     def update_rule(self, grad, old_param, param_name):
         # accumulation = momentum * accumulation + gradient
+        
         acc = self.momentum * self.get_accumulation(param_name) + grad
         self.accumulation[param_name] = acc
 
@@ -52,8 +54,8 @@ class MomentumOptimizer(d5.UpdateRuleOptimizer, ReferenceOptimizer):
 class AdamOptimizer(d5.ThreeStepOptimizer, ReferenceOptimizer):
 
     def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=0.001,
-                 beta1=0.9, beta2=0.999, epsilon=1e-08):
-        super().__init__(executor, loss)
+                 beta1=0.9, beta2=0.999, epsilon=1e-08, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = lr
         self.beta1 = beta1
         self.beta2 = beta2
@@ -95,8 +97,8 @@ class AdamOptimizer(d5.ThreeStepOptimizer, ReferenceOptimizer):
 
 class AdaGradOptimizer(d5.UpdateRuleOptimizer, ReferenceOptimizer):
     def __init__(self, executor: d5.GraphExecutor, loss: str = 'loss', lr=1e-2,
-                 eps=1e-6):
-        super().__init__(executor, loss)
+                 eps=1e-6, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = lr
         self.eps = eps
         self.squares = {}

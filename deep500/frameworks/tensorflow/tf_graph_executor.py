@@ -123,7 +123,7 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
 
 
 class TensorflowNativeGraphExecutor(TensorflowGraphExecutor):
-    def __init__(self, loss_node, output_node_name='output', session=None,
+    def __init__(self, loss_node, output_node, session=None,
                  events: List[d5.ExecutorEvent] = [],
                  device: d5.DeviceType = None):
         """ Creates a graph executor of an existing TF graph.
@@ -137,7 +137,7 @@ class TensorflowNativeGraphExecutor(TensorflowGraphExecutor):
         self.sess = session
         self.model = loss_node
         self.loss = loss_node
-        self.network.add_output(output_node_name)
+        self.network.add_output(output_node.name)
         self.network.add_output(loss_node.name)
         self.network.variables = {v.name: v for v in tf.trainable_variables()}
         self.network.tensors = {name: tf.get_default_graph().get_tensor_by_name(name) for name in self.network.output_names}

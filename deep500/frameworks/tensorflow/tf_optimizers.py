@@ -12,8 +12,16 @@ class TFOptimizer(FirstOrderOptimizer):
         super().__init__(executor, loss)
         self.minimize = None
 
-    def as_operator(self):
-        return self.op.minimize(self.network.fetch_internal_tensor(self.loss))
+    def as_operator(self, global_step=None):
+        grads_and_vars = self.op.compute_gradients(self.network.fetch_internal_tensor(self.loss))
+
+        # Modify gradients if necessary
+        if self.gradient_modifier is not None:
+            for i, (grad, var) in enumerate(grads_and_vars):
+                if grad is not None:
+                    grads_and_vars[i] = (self.gradient_modifier(grad.name, var, grad), var)
+
+        return self.op.apply_gradients(grads_and_vars, global_step)
 
     def _fetch_or_constant(self, value: Union[str, float]):
         if isinstance(value, str):

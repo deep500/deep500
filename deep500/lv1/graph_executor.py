@@ -7,9 +7,9 @@ from deep500.lv1.event import ExecutorEvent
 
 class GraphExecutor(metaclass=abc.ABCMeta):
 
-    def __init__(self, network: Network, events: List[ExecutorEvent] = []):
+    def __init__(self, network: Network, events: List[ExecutorEvent] = None):
         self.network = network
-        self.events = events
+        self.events = events or []
 
     @abc.abstractmethod
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:

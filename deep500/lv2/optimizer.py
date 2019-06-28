@@ -14,14 +14,21 @@ class Optimizer(metaclass=abc.ABCMeta):
     """ Abstraction for optimization (e.g., Stochastic Gradient Descent) on a 
         graph executor. """
 
-    def __init__(self, executor: GraphExecutor, loss: str = 'loss'):
+    def __init__(self, executor: GraphExecutor, loss: str = 'loss',
+                 gradient_modifier: Callable[[str, Any, Any], Any] = None):
         """ Initializes an abstract optimizer.
             @param executor Graph executor to use for training.
             @param loss Node name of parameter to optimize.
+            @param gradient_modifier Modifies gradients after computations
+                                     and before the optimizer step (e.g.,
+                                     for regularization). Receives 
+                                     (name, param, gradient) as input and
+                                     returns the new gradient as output.
         """
         self.executor = executor
         self.network = executor.network
         self.loss = loss
+        self.gradient_modifier = gradient_modifier
 
     def train(self, iterations: int, sampler: Sampler, 
               events: List[OptimizerEvent] = []) -> np.ndarray:
@@ -122,6 +129,8 @@ class ThreeStepOptimizer(FirstOrderOptimizer, metaclass=abc.ABCMeta):
         gradients = self.executor.network.gradient(self.loss)
         for (param_name, grad_name) in gradients:
             param, grad = self.executor.network.fetch_tensors([param_name, grad_name])
+            if self.gradient_modifier is not None:
+                grad = self.gradient_modifier(grad_name, param, grad)
             param = self.update_rule(grad, param, param_name)
             self.executor.network.feed_tensor(param_name, param, is_param=True)
 
@@ -156,6 +165,8 @@ class UpdateRuleOptimizer(ThreeStepOptimizer, metaclass=abc.ABCMeta):
         gradients = self.executor.network.gradient(self.loss)
         for (param_name, grad_name) in gradients:
             param, grad = self.executor.network.fetch_tensors([param_name, grad_name])
+            if self.gradient_modifier is not None:
+                grad = self.gradient_modifier(grad_name, param, grad)
             param = self.update_rule(grad, param, param_name)
             self.executor.network.feed_tensor(param_name, param, is_param=True)
 
