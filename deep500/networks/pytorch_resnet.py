@@ -196,7 +196,7 @@ def export_resnet(batch_size, depth=50, classes=10, file_path='resnet.onnx',
         
     net = _DEPTH_TO_FUNCTION[depth](classes, shape[0])
     init_model(net)
-    dummy_input = Variable(torch.randn(batch_size, *shape))
+    dummy_input = Variable(torch.zeros((batch_size, *shape)))
 
-    torch.onnx.export(net, dummy_input, file_path, verbose=True)
+    torch.onnx.export(net, dummy_input, file_path, verbose=False)
     return file_path

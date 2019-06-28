@@ -99,6 +99,7 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
         self.devname = 'cuda' if device is None or device.is_gpu() else 'cpu'
         self.events = events
         self.model = module.to(self.devname)
+        self.is_training = True
         self.loss = loss.to(self.devname) if loss is not None else None
         self.innode = input_node_name
         self.outnode = output_node_name
@@ -114,6 +115,9 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
         for event in self.events:
             event.before_executor(input)
 
+        if self.is_training is True:
+            self.model.eval()
+            self.is_training = False
         output = self.model(torch.from_numpy(input[self.innode]).to(self.devname))
         if self.loss is not None:
             y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
@@ -133,6 +137,10 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
                                y: str = 'loss') -> Dict[str, np.ndarray]:
         for event in self.events:
             event.before_executor(input)
+
+        if self.is_training is False:
+            self.model.train()
+            self.is_training = True
 
         self.model.zero_grad()
         y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
@@ -154,6 +162,10 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
 
     def inference_and_backprop_internal(self, inputs: Dict[str, np.ndarray],
                                         loss: str):
+        if self.is_training is False:
+            self.model.train()
+            self.is_training = True
+
         self.model.zero_grad()
         y_tensor = torch.tensor(inputs[self.labelnode], dtype=torch.long,
                                 device=self.devname)
