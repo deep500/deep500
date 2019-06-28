@@ -14,10 +14,12 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
     def __init__(self):
         self.counter = 0
         self.net_input = {}
+        self.is_training = None
 
     def visit_graph(self, graph: d5.ops.OnnxGraph, network: TensorflowNetwork):
         self.net_input.clear()
         tf.reset_default_graph()
+        self.is_training = tf.placeholder(tf.bool)
 
     def visit_net_input(self, input: d5.ops.OnnxValueInfo, network: TensorflowNetwork):
         if isinstance(input.type, d5.ops.OnnxTensorType):
@@ -53,7 +55,7 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
     def visit_dropout(self, op: d5.ops.Dropout, network: TensorflowNetwork):
         X = network.fetch_internal_tensor(op.i_data)
         ratio = op.ratio.get_value() if op.ratio else 0.5
-        Y = tf.nn.dropout(X, ratio)
+        Y = tf.layers.dropout(X, rate=ratio, training=self.is_training)
         network.feed_internal_tensor(op.o_output, Y)
 
     def visit_sub(self, op: d5.ops.Sub, network: TensorflowNetwork):
@@ -938,28 +940,20 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
         return pooled
 
     def visit_batchnormalization(self, op: d5.ops.BatchNormalization, network: TensorflowNetwork):
-        X, B, scale, r_mean, r_var = network.fetch_internal_tensors([op.i_X, op.i_B, op.i_scale, op.i_mean, op.i_var])
-        X_shape = X.get_shape().as_list()
-        X_rank = len(X_shape)
-        params_shape_broadcast = list([1, X_shape[1]] + [1 for _ in range(2, X_rank)])
-        total_num_dim = len(X.get_shape())
-        scale = tf.reshape(scale, params_shape_broadcast)
-        bias = tf.reshape(B, params_shape_broadcast)
-        r_mean = tf.reshape(r_mean, params_shape_broadcast)
-        r_var = tf.reshape(r_var, params_shape_broadcast)
+        X, B, scale, r_mean, r_var = network.fetch_internal_tensors([
+            op.i_X, op.i_B, op.i_scale, op.i_mean, op.i_var])
 
-        if False:  # not self.is_test:
-            Y = tf.nn.batch_normalization(X, r_mean, r_var, bias, scale, 1e-5)
-        else:
-            spatial = (1 if op.spatial is None else op.spatial.get_value()) == 1
-            momentum = 0.9 if op.momentum is None else op.momentum.get_value()
-            axis = [0] if spatial else [0] + list(range(2, total_num_dim))
-            mean, variance = tf.nn.moments(X, axis)
-            r_mean = r_mean * momentum + mean * (1 - momentum)
-            r_var = r_var * momentum + variance * (1 - momentum)
+        momentum = 0.9 if op.momentum is None else op.momentum.get_value()
+        epsilon = op.epsilon.get_value() if op.epsilon else 1e-5
 
-            Y = tf.nn.batch_normalization(X, r_mean, r_var, bias, scale, 1e-5)
-            network.feed_internal_tensor(op.o_Y, Y)
+        # TODO: Ignoring initial running mean, variance, and gamma/beta!
+        # Axis is fixed to 1 since ONNX forces the NCHW data layout.
+        tfop = tf.layers.BatchNormalization(axis=1, momentum=momentum,
+                                            epsilon=epsilon)
+        Y = tfop.apply(X, training=self.is_training)
+
+        network.feed_internal_tensor(op.o_Y, Y)
+
 
     PAD_TF_INCOMPATIBLE = "PAD_TF_INCOMPATIBLE"
 

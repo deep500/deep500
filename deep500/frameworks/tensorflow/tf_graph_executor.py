@@ -12,13 +12,16 @@ from .tf_visitor_impl import TensorflowVisitor
         
         
 class TensorflowGraphExecutor(d5.GraphExecutor):
-    def __init__(self, model: d5.ops.OnnxModel, device: d5.DeviceType, events: List[d5.ExecutorEvent] = []):
-        super(TensorflowGraphExecutor, self).__init__(TensorflowNetwork(device), events)
+    def __init__(self, model: d5.ops.OnnxModel, device: d5.DeviceType,
+                 events: List[d5.ExecutorEvent] = None):
+        super(TensorflowGraphExecutor, self).__init__(TensorflowNetwork(device),
+                                                      events)
         self.setup_done = False
         self.model = model
         self.sess = None
-
-        model.accept(TensorflowVisitor(), self.network)
+        visitor = TensorflowVisitor()
+        model.accept(visitor, self.network)
+        self.is_training = visitor.is_training
 
     @property
     def session(self):
@@ -36,7 +39,8 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         if input:
             input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
         else:
-            input_dict = None
+            input_dict = {}
+        input_dict[self.is_training] = False
 
         if not self.network.vars_initialized:
             init = tf.global_variables_initializer()
@@ -65,7 +69,8 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         if input:
             input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
         else:
-            input_dict = None
+            input_dict = {}
+        input_dict[self.is_training] = True
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
         # Here we provide gradients in numpy form so that we can work on them externally
@@ -83,8 +88,13 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
             self.session.run(init)
             self.network.vars_initialized = True
 
-        result = self.session.run(fetches=[[loss], grad_tensors, output_list], feed_dict=input_dict)
-        loss_np, grad_numpy, outputs = result
+        # Add update operators, e.g., updating batch normalization running
+        # mean and variance
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
+        result = self.session.run(fetches=[[loss], grad_tensors, output_list,
+                                           update_ops], feed_dict=input_dict)
+        loss_np, grad_numpy, outputs, _ = result
 
         self.network.numpy_by_grad = {v: grad_numpy[i] for i, v in enumerate(grad_tensors)}
 
@@ -98,14 +108,16 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
 
         return result
 
-    def fetch(self, input: Dict[str, np.ndarray], op, y: str = 'loss') -> Dict[str, np.ndarray]:
+    def fetch(self, input: Dict[str, np.ndarray], op, y: str = 'loss',
+              is_training=True) -> Dict[str, np.ndarray]:
         loss = self.network.fetch_internal_tensor(y)
 
         # map string to tensor input
         if input:
             input_dict = {self.network.fetch_internal_tensor(name): v for (name, v) in input.items()}
         else:
-            input_dict = None
+            input_dict = {}
+        input_dict[self.is_training] = is_training
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
         if not self.network.vars_initialized:
@@ -113,7 +125,14 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
             self.session.run(init)
             self.network.vars_initialized = True
 
-        result = self.session.run(fetches=[[op], [loss], output_list], feed_dict=input_dict)
+        fetches = [op]
+        if is_training:
+            # Add update operators, e.g., updating batch normalization running
+            # mean and variance
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            fetches.append(update_ops)
+
+        result = self.session.run(fetches=[fetches, [loss], output_list], feed_dict=input_dict)
         _, loss_np, outputs = result
             
         result = {y: loss_np}

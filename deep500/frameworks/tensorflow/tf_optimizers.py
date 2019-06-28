@@ -41,7 +41,9 @@ class TFOptimizer(FirstOrderOptimizer):
             # Force re-initialization of network to init optimizer
             self.network.vars_initialized = False
 
-        return self.executor.fetch(inputs, self.minimize, self.loss)
+        result = self.executor.fetch(inputs, self.minimize, self.loss,
+                                     is_training=True)
+        return result
 
 
 class GradientDescent(TFOptimizer):
