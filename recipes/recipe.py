@@ -107,24 +107,33 @@ def run_recipe(fixed: Dict[str, Any],
 
     # Construct samplers
     if 'train_sampler' in comps:
-        train_sampler = comps['train_sampler'](
-            train_set, batch, *comps['train_sampler_args'],
-            **comps['train_sampler_kwargs'])
+        if isinstance(comps['train_sampler'], d5.Sampler):
+            train_sampler = comps['train_sampler']
+        else:
+            train_sampler = comps['train_sampler'](
+                train_set, batch, *comps['train_sampler_args'],
+                **comps['train_sampler_kwargs'])
     else:
         train_sampler = train_set
 
     if 'validation_sampler' in comps:
-        validation_sampler = comps['validation_sampler'](
-            validation_set, batch, *comps['validation_sampler_args'],
-            **comps['validation_sampler_kwargs'])
+        if isinstance(comps['validation_sampler'], d5.Sampler):
+            validation_sampler = comps['validation_sampler']
+        else:
+            validation_sampler = comps['validation_sampler'](
+                validation_set, batch, *comps['validation_sampler_args'],
+                **comps['validation_sampler_kwargs'])
     else:
         validation_sampler = validation_set
 
     # Construct executor
     if 'executor' not in comps:
         raise SyntaxError('Executor must be specified in recipe')
-    executor = comps['executor'](network, *comps['executor_args'],
-                                 **comps['executor_kwargs'])
+    if isinstance(comps['executor'], d5.GraphExecutor):
+        executor = comps['executor']
+    else:
+        executor = comps['executor'](network, *comps['executor_args'],
+                                     **comps['executor_kwargs'])
 
     # Construct optimizer
     if 'optimizer' not in comps:
