@@ -6,7 +6,7 @@ import torch.nn
 import deep500 as d5
 
 from .pytorch_network import PyTorchNetwork, PyTorchNativeNetwork
-from .pytorch_visitor import PyTorchMetaVisitor, PyTorchVisitor
+from .pytorch_visitor import PyTorchVisitor
 
 
 class PyTorchGraphExecutor(d5.GraphExecutor):
@@ -20,7 +20,9 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
         self.is_training = False
         model.accept(self.visitor, self.network)
         self.model = self.visitor.model.to(self.devname)
-        self.network = PyTorchNativeNetwork(self.model)
+        new_network = PyTorchNativeNetwork(self.model)
+        new_network.outputs = self.network.outputs
+        self.network = new_network
 
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         for event in self.events:
@@ -103,7 +105,6 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
         self.labelnode = label_node_name
         self.lossnode = loss_node_name
         self.with_outputs = with_outputs
-        self.network.outputs = []
 
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         for event in self.events:

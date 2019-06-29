@@ -26,26 +26,12 @@ def _is_param(tensor: OnnxTensor):
 
     return True
 
-#
-class PyTorchMetaVisitor(EmptyOnnxBaseVisitor):
-
-    def visit_initializer(self, each_initializer: OnnxTensor, network: PyTorchNetwork):
-        network.feed_tensor(each_initializer.name, each_initializer.get_data(),
-                            is_param=_is_param(each_initializer))
-
-    def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
-        network.outputs[output.name] = output.name
-
-    def visit_softmax_cross_entropy(self, label_cross_entropy: SoftmaxCrossEntropy, network: PyTorchNetwork):
-        network.outputs[label_cross_entropy.o_output] = label_cross_entropy.o_output
-
 
 class GraphModule(nn.Module):
     def __init__(self):
         super().__init__()
         self._params = {}
-        self._outputs = set()
-        self._nomove = {}
+        self._nomove = set()
         self._compute = []
 
     def forward(self):
@@ -68,12 +54,13 @@ class GraphModule(nn.Module):
                 self._params[pname] = p.to(*args, **kwargs)
         return self
 
-# TODO: Initialize conv and batchnorm (initializers!)
+
 class PyTorchVisitor(OnnxBaseVisitor):
 
     def __init__(self):
         self.model = GraphModule()
         self._tensors = {}
+        self.initializers = {}
 
     def _get_shape(self, name):
         return self._tensors[name].type.shape.shape
@@ -83,17 +70,19 @@ class PyTorchVisitor(OnnxBaseVisitor):
 
     def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
         self._tensors[output.name] = output
-        self.model._outputs.add(output.name)
+        network.outputs.add(output.name)
 
     def visit_initializer(self, each_initializer: OnnxTensor, network: PyTorchNetwork):
-        self._add_param(each_initializer.name,
-                        torch.tensor(each_initializer.get_data()),
-                        trainable=False)#_is_param(each_initializer))
+        self.initializers[each_initializer.name] = \
+            torch.tensor(each_initializer.get_data())
+        # self._add_param(each_initializer.name,
+        #                 torch.tensor(each_initializer.get_data()),
+        #                 trainable=False)#_is_param(each_initializer))
 
     def _add_param(self, name, value, trainable=False, nomove=False):
         self.model._params[name] = value
         if nomove:
-            self.model._nomove[name] = True
+            self.model._nomove.add(name)
         if trainable:
             self.model.register_parameter(name, value)
 
@@ -101,10 +90,6 @@ class PyTorchVisitor(OnnxBaseVisitor):
         self.model._compute.append((module, output, arguments))
         if isinstance(module, torch.nn.Module):
             self.model.add_module(output, module)
-
-    def general_visit(self, op: Operation, result: Union[nn.Module, torch.Tensor]):
-        # Set the result as a sub-module/sub-buffer
-        self._add_computation(op.output[0], result, tuple())
 
     def visit_constant(self, op: Constant, network: PyTorchNetwork):
         self._add_param(op.output[0], torch.tensor(op.value.get_value()), nomove=True)
@@ -135,9 +120,11 @@ class PyTorchVisitor(OnnxBaseVisitor):
         # Set module parameters
         mod = torch.nn.Conv2d(conv_shape[1], conv_shape[0], op.kernel_shape.value,
                               bias=op.i_B is not None, **kwargs)
-        # with torch.no_grad():
-        #     mod.weight[:] = network.fetch_internal_tensor(op.i_W)
-        #     mod.bias[:] = network.fetch_internal_tensor(op.i_B)
+        if op.i_W in self.initializers:
+            mod.weight = torch.nn.Parameter(self.initializers[op.i_W])
+        if op.i_B in self.initializers:
+            mod.bias = torch.nn.Parameter(self.initializers[op.i_B])
+
         self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_pad(self, op, network: PyTorchNetwork):
@@ -207,6 +194,11 @@ class PyTorchVisitor(OnnxBaseVisitor):
         if alpha == 1.0 and beta == 1.0 and trans_b == 1:
             B_shape = self._get_shape(op.i_B)
             mod = nn.Linear(B_shape[1], B_shape[0], op.i_C is not None)
+            if op.i_B in self.initializers:
+                mod.weight = torch.nn.Parameter(self.initializers[op.i_B])
+            if op.i_C in self.initializers:
+                mod.bias = torch.nn.Parameter(self.initializers[op.i_C])
+
             self._add_computation(mod, op.o_Y, (op.i_A,))
             return
 
@@ -231,7 +223,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
     def visit_softmax_cross_entropy(self, op: SoftmaxCrossEntropy, network: PyTorchNetwork):
         mod = torch.nn.CrossEntropyLoss()
         self._add_computation(mod, op.o_output, (op.i_X, op.i_target))
-        self.model._outputs.add(op.o_output)
+        network.outputs.add(op.o_output)
 
     def visit_relu(self, op: Relu, network: PyTorchNetwork):
         mod = torch.nn.ReLU()
@@ -244,21 +236,21 @@ class PyTorchVisitor(OnnxBaseVisitor):
     def visit_batchnormalization(self, op: BatchNormalization, network: PyTorchNetwork):
         epsilon = op.epsilon.get_value() if op.epsilon else 1e-5
         momentum = op.momentum.get_value() if op.momentum else 0.9
-        #mean = network.fetch_internal_tensor(op.i_mean)
-        #var = network.fetch_internal_tensor(op.i_var)
-        #scale = network.fetch_internal_tensor(op.i_scale)
-        #bias = network.fetch_internal_tensor(op.i_B)
 
         # PyTorch uses the complement momentum
         momentum = 1. - momentum
 
         bn = torch.nn.BatchNorm2d(self._get_shape(op.i_scale)[0], eps=epsilon,
                                   momentum=momentum)
-        #with torch.no_grad():
-        #    bn.weight[:] = scale
-        #    bn.bias[:] = bias
-        #    bn.running_mean[:] = mean
-        #    bn.running_var[:] = var
+        with torch.no_grad():
+            if op.i_mean in self.initializers:
+                bn.running_mean[:] = self.initializers[op.i_mean]
+            if op.i_var in self.initializers:
+                bn.running_var[:] = self.initializers[op.i_var]
+        if op.i_scale in self.initializers:
+            bn.weight = torch.nn.Parameter(self.initializers[op.i_scale])
+        if op.i_B in self.initializers:
+            bn.bias = torch.nn.Parameter(self.initializers[op.i_B])
 
         self._add_computation(bn, op.o_Y, (op.i_X,))
 

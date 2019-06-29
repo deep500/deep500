@@ -11,7 +11,7 @@ class PyTorchNetwork(d5.Network):
         super(PyTorchNetwork, self).__init__()
         self.variables = {}
         self.inputs = {}
-        self.outputs = {}
+        self.outputs = set()
         self.optimizer_created = False
         self.grad_params = {}
         self.cuda = device.is_gpu()
@@ -86,14 +86,11 @@ class PyTorchNetwork(d5.Network):
 class PyTorchNativeNetwork(PyTorchNetwork):
     def __init__(self, module: torch.nn.Module):
         self.module = module
+        self.outputs = set()
 
     @property
     def parameters(self):
         return self.module.parameters()
-
-    @property
-    def outputs(self):
-        return self.module._outputs
 
     def gradient(self, y: str = 'loss'):
         return [(p, p.grad) for p in self.module.parameters()]

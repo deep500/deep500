@@ -10,7 +10,7 @@ from .op_validation import test_nativeop_forward, test_nativeop_gradient
 import deep500 as d5
 
 from .pytorch_network import PyTorchNetwork, PyTorchNativeNetwork
-from .pytorch_visitor import PyTorchMetaVisitor, PyTorchVisitor
+from .pytorch_visitor import PyTorchVisitor
 from .pytorch_graph_executor import (PyTorchGraphExecutor,
                                      PyTorchNativeGraphExecutor)
 from .pytorch_optimizers import *
