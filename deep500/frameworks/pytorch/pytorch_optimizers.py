@@ -27,6 +27,7 @@ class PyTorchOptimizer(FirstOrderOptimizer):
 
     def step(self, inputs):
         def closure():
+            self.op.zero_grad()
             loss = self.executor.inference_and_backprop_internal(inputs,
                                                                  self.loss)
 
