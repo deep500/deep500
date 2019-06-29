@@ -91,6 +91,10 @@ class PyTorchNativeNetwork(PyTorchNetwork):
     def parameters(self):
         return self.module.parameters()
 
+    @property
+    def outputs(self):
+        return self.module._outputs
+
     def gradient(self, y: str = 'loss'):
         return [(p, p.grad) for p in self.module.parameters()]
 

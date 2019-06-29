@@ -3,7 +3,6 @@ from typing import Callable, Union
 
 from deep500.lv2.optimizer import FirstOrderOptimizer
 from .pytorch_graph_executor import PyTorchGraphExecutor
-from .pytorch_visitor import PyTorchVisitor
 
 
 class PyTorchOptimizer(FirstOrderOptimizer):
@@ -12,8 +11,6 @@ class PyTorchOptimizer(FirstOrderOptimizer):
         if not isinstance(executor, PyTorchGraphExecutor):
             raise TypeError('PyTorch optimizer must use PyTorch executor')
         super().__init__(executor, loss, **kwargs)
-        self.visitor = PyTorchVisitor()
-        self.executor.setup()
         self.op = None
         self.with_outputs = with_outputs
 
@@ -45,10 +42,9 @@ class PyTorchOptimizer(FirstOrderOptimizer):
 
         # Skip fetching all outputs if not necessary
         if self.with_outputs:
-            result.update({o: tensor.cpu().detach().numpy() for o, tensor in
-                           zip(self.network.outputs,
-                               self.network.fetch_internal_tensors(
-                                   self.network.outputs))})
+            for out in self.network.outputs:
+                result[out] = self.executor.model._params[out].detach().cpu().numpy()
+
         return result
 
 
