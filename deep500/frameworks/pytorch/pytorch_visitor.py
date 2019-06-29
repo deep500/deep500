@@ -134,7 +134,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
 
         # Set module parameters
         mod = torch.nn.Conv2d(conv_shape[1], conv_shape[0], op.kernel_shape.value,
-                              **kwargs)
+                              bias=op.i_B is not None, **kwargs)
         # with torch.no_grad():
         #     mod.weight[:] = network.fetch_internal_tensor(op.i_W)
         #     mod.bias[:] = network.fetch_internal_tensor(op.i_B)
@@ -203,6 +203,14 @@ class PyTorchVisitor(OnnxBaseVisitor):
         trans_a = 0 if op.transA is None else op.transA.value
         trans_b = 0 if op.transB is None else op.transB.value
 
+        # Linear case
+        if alpha == 1.0 and beta == 1.0 and trans_b == 1:
+            B_shape = self._get_shape(op.i_B)
+            mod = nn.Linear(B_shape[1], B_shape[0], op.i_C is not None)
+            self._add_computation(mod, op.o_Y, (op.i_A,))
+            return
+
+        # General case
         def gemm(A, B, C):
             if alpha != 1.0 and alpha != 0.0:
                 A = torch.mul(A, alpha)

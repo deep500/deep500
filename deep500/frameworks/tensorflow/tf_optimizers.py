@@ -6,10 +6,10 @@ from .tf_graph_executor import TensorflowGraphExecutor
 
 
 class TFOptimizer(FirstOrderOptimizer):
-    def __init__(self, executor: TensorflowGraphExecutor, loss: str):
+    def __init__(self, executor: TensorflowGraphExecutor, loss: str, **kwargs):
         if not isinstance(executor, TensorflowGraphExecutor):
             raise TypeError('TensorFlow optimizer must use TensorFlow executor')
-        super().__init__(executor, loss)
+        super().__init__(executor, loss, **kwargs)
         self.minimize = None
 
     def as_operator(self, global_step=None):
@@ -48,8 +48,8 @@ class TFOptimizer(FirstOrderOptimizer):
 
 class GradientDescent(TFOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str,
-                 learning_rate: Union[str, float] = 0.1):
-        super().__init__(executor, loss)
+                 learning_rate: Union[str, float] = 0.1, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = self._fetch_or_constant(learning_rate)
         self.op = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
 
@@ -59,8 +59,8 @@ class AdamOptimizer(TFOptimizer):
                  learning_rate: Union[str, float] = 0.001,
                  beta1: Union[str, float] = 0.9,
                  beta2: Union[str, float] = 0.999,
-                 epsilon: Union[str, float] = 1e-08):
-        super().__init__(executor, loss)
+                 epsilon: Union[str, float] = 1e-08, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = self._fetch_or_constant(learning_rate)
         self.beta1 = self._fetch_or_constant(beta1)
         self.beta2 = self._fetch_or_constant(beta2)
@@ -75,8 +75,8 @@ class RMSPropOptimizer(TFOptimizer):
                  learning_rate: Union[str, float],
                  decay: Union[str, float] = 0.9,
                  momentum: Union[str, float] = 0.0,
-                 epsilon: Union[str, float] = 1e-10):
-        super().__init__(executor, loss)
+                 epsilon: Union[str, float] = 1e-10, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = self._fetch_or_constant(learning_rate)
         self.decay = self._fetch_or_constant(decay)
         self.momentum = self._fetch_or_constant(momentum)
@@ -90,8 +90,8 @@ class RMSPropOptimizer(TFOptimizer):
 class AdaGradOptimizer(TFOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str,
                  learning_rate: Union[str, float],
-                 initial_accumulator_value: Union[str, float] = 0.1):
-        super().__init__(executor, loss)
+                 initial_accumulator_value: Union[str, float] = 0.1, **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = self._fetch_or_constant(learning_rate)
         self.iav = self._fetch_or_constant(initial_accumulator_value)
         self.op = tf.train.AdaGradOptimizer(learning_rate=self.lr, 
@@ -101,8 +101,8 @@ class AdaGradOptimizer(TFOptimizer):
 class MomentumOptimizer(TFOptimizer):
     def __init__(self, executor: TensorflowGraphExecutor, loss: str, 
                  learning_rate: Union[str, float],
-                 momentum: Union[str, float]):
-        super().__init__(executor, loss)
+                 momentum: Union[str, float], **kwargs):
+        super().__init__(executor, loss, **kwargs)
         self.lr = self._fetch_or_constant(learning_rate)
         self.momentum = self._fetch_or_constant(momentum)
         self.op = tf.train.MomentumOptimizer(learning_rate=self.lr, 
