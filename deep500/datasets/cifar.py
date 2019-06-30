@@ -92,8 +92,8 @@ def _cifar_numpy(train_files, test_files, dsname, normalize):
     # Create arrays for train and test images
     train_images = np.zeros([len(train_files)*ipb, 3, 32, 32], dtype=np.float32)
     test_images = np.zeros([test_ipb, 3, 32, 32], dtype=np.float32)
-    train_labels = np.zeros(len(train_files)*ipb, dtype=np.int32)
-    test_labels = np.zeros(test_ipb, dtype=np.int32)
+    train_labels = np.zeros(len(train_files)*ipb, dtype=np.int64)
+    test_labels = np.zeros(test_ipb, dtype=np.int64)
 
     # Extract training data (label followed by image data)
     for i, file in enumerate(train_files):
@@ -102,7 +102,7 @@ def _cifar_numpy(train_files, test_files, dsname, normalize):
         
         # Read labels and images
         # Adapted from https://mattpetersen.github.io/load-cifar10-with-numpy
-        train_labels[i*ipb:(i+1)*ipb] = filebuffer[entryoff::entrylen].astype(np.int32)
+        train_labels[i*ipb:(i+1)*ipb] = filebuffer[entryoff::entrylen].astype(np.int64)
         pixeldata = np.delete(filebuffer, np.arange(entryoff, size, entrylen))
         if dsname == 'cifar100':
             pixeldata = np.delete(pixeldata, np.arange(0, size, entrylen-1))
@@ -111,7 +111,7 @@ def _cifar_numpy(train_files, test_files, dsname, normalize):
     # Extract test data        
     with open(test_files[0], 'rb') as f:
         filebuffer = np.frombuffer(f.read(), 'B')
-    test_labels[:] = filebuffer[entryoff::entrylen].astype(np.int32)
+    test_labels[:] = filebuffer[entryoff::entrylen].astype(np.int64)
     pixeldata = np.delete(filebuffer, np.arange(entryoff, test_size, entrylen))
     if dsname == 'cifar100':
         pixeldata = np.delete(pixeldata, np.arange(0, test_size, entrylen-1))

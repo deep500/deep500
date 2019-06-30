@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 from torch import nn
 import torch.nn.functional as F
@@ -27,187 +27,236 @@ def _is_param(tensor: OnnxTensor):
     return True
 
 
-class PyTorchMetaVisitor(EmptyOnnxBaseVisitor):
+class GraphModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self._params = {}
+        self._nomove = set()
+        self._compute = []
 
-    def visit_initializer(self, each_initializer: OnnxTensor, network: PyTorchNetwork):
-        network.feed_tensor(each_initializer.name, each_initializer.get_data(),
-                            is_param=_is_param(each_initializer))
+    def forward(self):
+        for func, out, args in self._compute:
+            output = func(*(self._params.get(arg, arg)
+                                       for arg in args))
+            if isinstance(output, list):
+                for o, oname in zip(output, out):
+                    self._params[oname] = o
+            else:
+                self._params[out] = output
 
-    def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
-        network.outputs[output.name] = output.name
 
-    def visit_softmax_cross_entropy(self, label_cross_entropy: SoftmaxCrossEntropy, network: PyTorchNetwork):
-        network.outputs[label_cross_entropy.o_output] = label_cross_entropy.o_output
+        return output
+
+    def to(self, *args, **kwargs):
+        super().to(*args, **kwargs)
+        for pname, p in self._params.items():
+            if pname not in self._nomove:
+                self._params[pname] = p.to(*args, **kwargs)
+        return self
 
 
 class PyTorchVisitor(OnnxBaseVisitor):
 
     def __init__(self):
-        self.initializer_visited = False
-        # globals obs
-        self.global_ops = {} # type: Dict[str, Module]
-        # optimizer
-        self.optimizer = None
+        self.model = GraphModule()
+        self._tensors = {}
+        self.initializers = {}
+
+    def _get_shape(self, name):
+        return self._tensors[name].type.shape.shape
+
+    def visit_net_input(self, input: OnnxValueInfo, network: PyTorchNetwork):
+        self._tensors[input.name] = input
+
+    def visit_net_output(self, output: OnnxValueInfo, network: PyTorchNetwork):
+        self._tensors[output.name] = output
+        network.outputs.add(output.name)
+
+    def visit_initializer(self, each_initializer: OnnxTensor, network: PyTorchNetwork):
+        self.initializers[each_initializer.name] = \
+            torch.tensor(each_initializer.get_data())
+        # self._add_param(each_initializer.name,
+        #                 torch.tensor(each_initializer.get_data()),
+        #                 trainable=False)#_is_param(each_initializer))
+
+    def _add_param(self, name, value, trainable=False, nomove=False):
+        self.model._params[name] = value
+        if nomove:
+            self.model._nomove.add(name)
+        if trainable:
+            self.model.register_parameter(name, value)
+
+    def _add_computation(self, module, output, arguments):
+        self.model._compute.append((module, output, arguments))
+        if isinstance(module, torch.nn.Module):
+            self.model.add_module(output, module)
 
     def visit_constant(self, op: Constant, network: PyTorchNetwork):
-        network.feed_tensor(op.o_output, torch.tensor(op.value.get_value(), device='cpu'))
+        self._add_param(op.output[0], torch.tensor(op.value.get_value()), nomove=True)
 
     def visit_add(self, op: Add, network: PyTorchNetwork):
-        A = network.fetch_internal_tensor(op.i_A)
-        B = network.fetch_internal_tensor(op.i_B)
-        # if op.broadcast is not None and op.broadcast.get_value() != 0:
-        #     B_new_shape = self.get_broadcast_shape(A, B, op.axis.get_value())
-        #     B = B.view(B_new_shape)
-        network.feed_tensor(op.o_C, A + B)
+        self._add_computation(lambda a, b: a + b, op.o_C, (op.i_A, op.i_B))
 
     def visit_abs(self, op: Abs, network: PyTorchNetwork):
-        X = network.fetch_internal_tensors([op.i_X])[0]
-        network.feed_tensor(op.o_Y, torch.abs(X))
+        self._add_computation(torch.abs, op.o_Y, (op.i_X,))
 
     def visit_sub(self, op: Sub, network: PyTorchNetwork):
-        A, B = network.fetch_internal_tensors([op.i_A, op.i_B])
-        A = torch.mul(A, (-1))
-        network.feed_tensor(op.o_C, torch.add(A, B))
+        self._add_computation(lambda a, b: a - b, op.o_C, (op.i_A, op.i_B))
 
     def visit_pow(self, op: Pow, network: PyTorchNetwork):
-        X, Y = network.fetch_internal_tensors([op.i_X, op.i_Y])
-        network.feed_tensor(op.o_Z, torch.pow(X, Y))
+        self._add_computation(torch.pow, op.o_Z, (op.i_X, op.i_Y))
 
     def visit_reshape(self, op: Reshape, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_data)
-        S = list(network.fetch_tensor(op.i_shape))
-        network.feed_tensor(op.o_reshaped, X.view(S))
+        self._add_computation(
+            lambda data, shape: torch.reshape(data, shape.tolist()),
+            op.o_reshaped, (op.i_data, op.i_shape))
 
     def visit_conv(self, op: Conv, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_X)
-        W = network.fetch_internal_tensor(op.i_W)
-        B = None if op.i_B is None else network.fetch_internal_tensor(op.i_B)
-        args = self.get_conv_base(op)
-        result = F.conv2d(X, W, B, **args)
-        network.feed_tensor(op.o_Y, result)
+        kwargs = self.get_conv_base(op)
+
+        # Assuming NCHW data layout due to ONNX
+        conv_shape = self._get_shape(op.i_W)
+
+        # Set module parameters
+        mod = torch.nn.Conv2d(conv_shape[1], conv_shape[0], op.kernel_shape.value,
+                              bias=op.i_B is not None, **kwargs)
+        if op.i_W in self.initializers:
+            mod.weight = torch.nn.Parameter(self.initializers[op.i_W])
+        if op.i_B in self.initializers:
+            mod.bias = torch.nn.Parameter(self.initializers[op.i_B])
+
+        self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_pad(self, op, network: PyTorchNetwork):
-        data = network.fetch_internal_tensor(op.i_data)
-        result = F.pad(data, op.pads.value, mode=op.mode.value, value=op.value.value)
-        network.feed_tensor(op.o_output, result)
+        self._add_computation(lambda x: F.pad(x, op.pads.value,
+                                              mode=op.mode.value,
+                                              value=op.value.value),
+                              op.o_output, (op.i_data,))
 
     def visit_shape(self, op, network: PyTorchNetwork):
-        data = network.fetch_internal_tensor(op.i_data)
-        network.feed_tensor(op.o_shape, torch.tensor(data.shape))
+        self._add_computation(lambda x: torch.tensor(x.shape),
+                              op.o_shape, (op.i_data,))
 
     def visit_gather(self, op, network: PyTorchNetwork):
-        input = network.fetch_internal_tensor(op.i_data)
-        indices = network.fetch_internal_tensor(op.i_indices).cpu()
-        results = torch.gather(
-            input,
-            op.axis.value,
-            indices)
-        network.feed_tensor(op.o_output, results)
+        self._add_computation(lambda x, i: torch.gather(x, op.axis.value, i),
+                              op.o_output, (op.i_data, op.i_indices))
 
     def visit_unsqueeze(self, op, network: PyTorchNetwork):
-        data = network.fetch_internal_tensor(op.i_data)
-        result = data
-        for axis in op.axes.value:
-            result = torch.unsqueeze(result, axis)
-        network.feed_tensor(op.o_expanded, result)
+        def unsqueeze(x):
+            result = x
+            for axis in op.axes.value:
+                result = torch.unsqueeze(result, axis)
+            return result
+        self._add_computation(unsqueeze, op.o_expanded,
+                              (op.i_data,))
 
     def visit_lrn(self, op, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_X)
-        result = F.local_response_norm(
-            X,
-            op.size.value,
-            op.alpha.value,
-            op.beta.value,
-            op.bias.value)
-        network.feed_tensor(op.o_Y, result)
+        mod = torch.nn.LocalResponseNorm(op.size.value, op.alpha.value,
+                                         op.beta.value, op.k.value)
+        self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_split(self, op, network):
-        input = network.fetch_internal_tensor(op.i_input)
-        results = torch.split(input, op.split.value, dim=op.axis.value)
-        for res,out in zip(results, op.output):
-            network.feed_tensor(out, res)
+        self._add_computation(
+            lambda x: torch.split(x, op.split.value, dim=op.axis.value),
+            op.output, (op.i_input,))
 
     def visit_concat(self, op, network):
-        in_tensors = [network.fetch_internal_tensor(i) for i in op.input]
-        out = torch.cat(in_tensors, dim=op.axis.value)
-        network.feed_tensor(op.output[0], out)
+        self._add_computation(
+            lambda *args: torch.cat(args, dim=op.axis.value),
+            op.output[0], op.input)
+
+    def _visit_pool(self, op, op_name: str):
+        kernel_shape = op.kernel_shape.get_value()
+
+        # Dynamically obtain module type
+        modtyp = getattr(torch.nn, '%s%dd' % (op_name, len(kernel_shape)), None)
+        if modtyp is None:
+            raise RuntimeError('Unsupported dimensions for %s (%d)' %
+                               (op_name, len(kernel_shape)))
+
+        mod = modtyp(kernel_shape, op.strides.value[0], op.pads.value[0])
+
+        self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_maxpool(self, op: MaxPool, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_X)
-        args = {}
-        if hasattr(op, 'kernel_shape') and op.kernel_shape:
-            args['kernel_size'] = op.kernel_shape.get_value()
-        if hasattr(op, 'strides') and op.strides:
-            args['stride'] = op.strides.get_value()[0]
-        if hasattr(op, 'pads') and op.pads:
-            args['padding'] = op.pads.get_value()[0]
-        result = F.max_pool2d(X, **args)
-        network.feed_tensor(op.o_Y, result)
+        self._visit_pool(op, 'MaxPool')
 
     def visit_averagepool(self, op: AveragePool, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_X)
-        args = {}
-        if hasattr(op, 'kernel_shape') and op.kernel_shape:
-            args['kernel_size'] = op.kernel_shape.get_value()
-        if hasattr(op, 'strides') and op.strides:
-            args['stride'] = op.strides.get_value()[0]
-        if hasattr(op, 'pads') and op.pads:
-            args['padding'] = op.pads.get_value()[0]
-        result = F.avg_pool2d(X, **args)
-        network.feed_tensor(op.o_Y, result)
+        self._visit_pool(op, 'AvgPool')
 
     def visit_gemm(self, op: Gemm, network: PyTorchNetwork):
-        A, B, C = network.fetch_internal_tensors([op.i_A, op.i_B, op.i_C])
-        trans_a = 0 if op.transA is None else op.transA.get_value()
-        trans_b = 0 if op.transB is None else op.transB.get_value()
+        alpha = op.alpha.value if op.alpha is not None else 1.0
+        beta = op.beta.value if op.beta is not None else 0.0
+        trans_a = 0 if op.transA is None else op.transA.value
+        trans_b = 0 if op.transB is None else op.transB.value
 
-        if op.alpha:
-            A = torch.mul(A, op.alpha.get_value())
-        if op.beta:
-            C = torch.mul(C, op.beta.get_value())
+        # Linear case
+        if alpha == 1.0 and beta == 1.0 and trans_b == 1:
+            B_shape = self._get_shape(op.i_B)
+            mod = nn.Linear(B_shape[1], B_shape[0], op.i_C is not None)
+            if op.i_B in self.initializers:
+                mod.weight = torch.nn.Parameter(self.initializers[op.i_B])
+            if op.i_C in self.initializers:
+                mod.bias = torch.nn.Parameter(self.initializers[op.i_C])
 
-        if trans_a:
-            A = A.transpose(len(A.shape) - 1, len(A.shape) - 2)
-        if trans_b:
-            B = B.transpose(len(B.shape) - 1, len(B.shape) - 2)
+            self._add_computation(mod, op.o_Y, (op.i_A,))
+            return
 
-        A = torch.matmul(A, B)
-        result = torch.add(A, C)
-        network.feed_tensor(op.o_Y, result)
+        # General case
+        def gemm(A, B, C):
+            if alpha != 1.0 and alpha != 0.0:
+                A = torch.mul(A, alpha)
+            if beta != 1.0 and beta != 0.0 and C is not None:
+                C = torch.mul(C, beta)
+            if trans_a:
+                A = A.transpose(len(A.shape) - 1, len(A.shape) - 2)
+            if trans_b:
+                B = B.transpose(len(B.shape) - 1, len(B.shape) - 2)
+
+            result = torch.matmul(A, B)
+            if beta != 0.0 and C is not None:
+                result += C
+            return result
+
+        self._add_computation(gemm, op.o_Y, (op.i_A, op.i_B, op.i_C))
 
     def visit_softmax_cross_entropy(self, op: SoftmaxCrossEntropy, network: PyTorchNetwork):
-        X, label = network.fetch_internal_tensors([op.i_X, op.i_target])
-        network.feed_tensor(op.o_output, F.cross_entropy(X, label.long()))
+        mod = torch.nn.CrossEntropyLoss()
+        self._add_computation(mod, op.o_output, (op.i_X, op.i_target))
+        network.outputs.add(op.o_output)
 
     def visit_relu(self, op: Relu, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_X)
-        network.feed_tensor(op.o_Y, F.relu(X))
+        mod = torch.nn.ReLU()
+        self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_softmax(self, op: Softmax, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_input)
-        network.feed_tensor(op.o_output, F.relu(X))
+        mod = torch.nn.Softmax()
+        self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_batchnormalization(self, op: BatchNormalization, network: PyTorchNetwork):
-        X = network.fetch_internal_tensor(op.i_X)
-        mean = network.fetch_internal_tensor(op.i_mean)
-        var = network.fetch_internal_tensor(op.i_var)
-        weight = network.fetch_internal_tensor(op.i_scale)
-        B = network.fetch_internal_tensor(op.i_B)
         epsilon = op.epsilon.get_value() if op.epsilon else 1e-5
         momentum = op.momentum.get_value() if op.momentum else 0.9
 
         # PyTorch uses the complement momentum
         momentum = 1. - momentum
 
-        network.feed_tensor(op.o_Y, F.batch_norm(X, mean, var, weight, B,
-                                                 momentum=momentum,
-                                                 eps=epsilon))
+        bn = torch.nn.BatchNorm2d(self._get_shape(op.i_scale)[0], eps=epsilon,
+                                  momentum=momentum)
+        with torch.no_grad():
+            if op.i_mean in self.initializers:
+                bn.running_mean[:] = self.initializers[op.i_mean]
+            if op.i_var in self.initializers:
+                bn.running_var[:] = self.initializers[op.i_var]
+        if op.i_scale in self.initializers:
+            bn.weight = torch.nn.Parameter(self.initializers[op.i_scale])
+        if op.i_B in self.initializers:
+            bn.bias = torch.nn.Parameter(self.initializers[op.i_B])
+
+        self._add_computation(bn, op.o_Y, (op.i_X,))
 
     def visit_dropout(self, op: Dropout, network: PyTorchNetwork):
-        data = network.fetch_internal_tensor(op.i_data)
-        # In PyTorch, mask is not directly output (as opposed to the
-        # ONNX standard)
-        network.feed_tensor(op.o_output, F.dropout(data, op.ratio.value))
+        mod = torch.nn.Dropout(p=op.ratio.value)
+        self._add_computation(mod, op.o_output, (op.i_data,))
 
     def get_conv_base(self, op):
         args = {}
@@ -223,19 +272,3 @@ class PyTorchVisitor(OnnxBaseVisitor):
             args['groups'] = op.group.get_value()
 
         return args
-
-    def get_broadcast_shape(self, A, B, axis):
-        A_tensor = A.data if isinstance(A, autograd.Variable) else A
-        B_tensor = B.data if isinstance(B, autograd.Variable) else B
-        A_shape = A_tensor.size()
-        B_shape = B_tensor.size()
-
-        if len(B_shape) > 1:
-            # TODO(HBS): currently only supporting broadcast if shape of B is [1]. add more possibilities
-            raise NotImplementedError
-
-        n = len(A_shape)
-        B_new_shape = [1] * n
-        B_new_shape[axis] = B_shape[0]
-
-        return B_new_shape

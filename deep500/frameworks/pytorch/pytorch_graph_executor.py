@@ -6,7 +6,7 @@ import torch.nn
 import deep500 as d5
 
 from .pytorch_network import PyTorchNetwork, PyTorchNativeNetwork
-from .pytorch_visitor import PyTorchMetaVisitor, PyTorchVisitor
+from .pytorch_visitor import PyTorchVisitor
 
 
 class PyTorchGraphExecutor(d5.GraphExecutor):
@@ -14,30 +14,32 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
     def __init__(self, model: d5.ops.OnnxModel, device: d5.DeviceType,
                  events: List[d5.ExecutorEvent] = []):
         super().__init__(model, events)
-        self.model = model
-
-        self.setup_done = False
+        self.devname = 'cuda' if device is None or device.is_gpu() else 'cpu'
         self.network = PyTorchNetwork(device)
-
-    def setup(self):
-        if not self.setup_done:
-            self.model.accept(PyTorchMetaVisitor(), self.network)
-            self.setup_done = True
+        self.visitor = PyTorchVisitor()
+        self.is_training = False
+        model.accept(self.visitor, self.network)
+        self.model = self.visitor.model.to(self.devname)
+        new_network = PyTorchNativeNetwork(self.model)
+        new_network.outputs = self.network.outputs
+        self.network = new_network
 
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
-        self.setup()
-
         for event in self.events:
             event.before_executor(input)
 
-        
-        self.network._feed_input(input)
+        if self.is_training is True:
+            self.model.eval()
+            self.is_training = False
 
-        self.model.accept(PyTorchVisitor(), self.network)
+        for name, val in input.items():
+            self.model._params[name] = torch.tensor(val).to(self.devname)
+
+        self.model()
 
         output = {}
-        for i, out in enumerate(list(self.network.outputs.keys())):
-            output[out] = self.network.fetch_tensor(out)
+        for i, out in enumerate(list(self.network.outputs)):
+            output[out] = self.model._params[out].detach().cpu().numpy()
 
         for event in self.events:
             event.after_inference(output)
@@ -45,28 +47,19 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
         return output
 
     def inference_and_backprop(self, input: Dict[str, np.ndarray], y: str = 'loss') -> Dict[str, np.ndarray]:
-        self.setup()
-
         for event in self.events:
             event.before_executor(input)
 
-        self.network._feed_input(input)
-        self.model.accept(PyTorchVisitor(), self.network)
+        self.model.zero_grad()
+        self.inference_and_backprop_internal(input, y)
 
-        # Zero grads
-        for pname, p in self.network.variables.items():
-            p.grad = None
-        
-        y_ = self.network.variables[y]
-        y_.backward()
-        self.network._save_gradients()
-        
         output = {}
-        for i, out in enumerate(list(self.network.outputs.keys())):
-            output[out] = self.network.fetch_tensor(out)
+        for i, out in enumerate(list(self.network.outputs)):
+            output[out] = self.model._params[out].detach().cpu().numpy()
 
         # Add gradients
-        output.update({vname: self.network.fetch_tensor(vname) for vname in self.network.grad_params.values()})
+        output.update({pname: p.grad for pname, p
+                       in self.model.named_parameters()})
 
         for event in self.events:
             event.after_backprop(output)
@@ -75,11 +68,17 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
 
     def inference_and_backprop_internal(self, inputs: Dict[str, np.ndarray],
                                         loss: str):
-        self.network._feed_input(inputs)
-        self.model.accept(PyTorchVisitor(), self.network)
-        loss = self.network.variables[loss]
-        loss.backward()
-        return loss
+        if self.is_training is False:
+            self.model.train()
+            self.is_training = True
+
+        for name, val in inputs.items():
+            self.model._params[name] = torch.tensor(val).to(self.devname)
+
+        loss_ = self.model()
+        loss_.backward()
+
+        return loss_
 
 
 class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
@@ -106,10 +105,6 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
         self.labelnode = label_node_name
         self.lossnode = loss_node_name
         self.with_outputs = with_outputs
-        self.network.outputs = []
-
-    def setup(self):
-        pass
 
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         for event in self.events:
