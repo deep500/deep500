@@ -41,6 +41,8 @@ class TensorflowNetwork(d5.Network):
         if self.device_option.is_gpu():
             self.session_config.gpu_options.visible_device_list = str(self.device_option.num)
 
+        self.initializers = {}
+
     def _teardown(self):
         self.session.close()
 

@@ -946,11 +946,17 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
         momentum = 0.9 if op.momentum is None else op.momentum.get_value()
         epsilon = op.epsilon.get_value() if op.epsilon else 1e-5
 
-        # TODO: Ignoring initial running mean, variance, and gamma/beta!
         # Axis is fixed to 1 since ONNX forces the NCHW data layout.
         tfop = tf.layers.BatchNormalization(axis=1, momentum=momentum,
                                             epsilon=epsilon)
         Y = tfop.apply(X, training=self.is_training)
+
+        # Add network initializers for running mean, variance, and gamma/beta
+        network.initializers[tfop.gamma] = op.i_scale
+        if op.i_B is not None:
+            network.initializers[tfop.beta] = op.i_B
+        network.initializers[tfop.moving_mean] = op.i_mean
+        network.initializers[tfop.moving_variance] = op.i_var
 
         network.feed_internal_tensor(op.o_Y, Y)
 

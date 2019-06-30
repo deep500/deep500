@@ -23,6 +23,21 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         model.accept(visitor, self.network)
         self.is_training = visitor.is_training
 
+    def setup(self):
+        # Initialize network variables
+        if not self.network.vars_initialized:
+            init = tf.global_variables_initializer()
+
+            self.session.run(init)
+            self.network.vars_initialized = True
+
+        # Initialize network parameters
+        for target, source in self.network.initializers.items():
+            src_tensor = self.network.fetch_internal_tensor(source)
+            self.session.run(target.assign(src_tensor))
+
+        self.setup_done = True
+
     @property
     def session(self):
         if self.sess is not None:
@@ -32,7 +47,7 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         for event in self.events:
             event.before_executor(input)
-            
+
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
         # map string to tensor input
@@ -42,11 +57,8 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
             input_dict = {}
         input_dict[self.is_training] = False
 
-        if not self.network.vars_initialized:
-            init = tf.global_variables_initializer()
-
-            self.session.run(init)
-            self.network.vars_initialized = True
+        if self.setup_done is False:
+            self.setup()
 
         output = self.session.run(output_list, input_dict)
 
@@ -62,7 +74,7 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
     def inference_and_backprop(self, input: Dict[str, np.ndarray], y: str = 'loss') -> Dict[str, np.ndarray]:
         for event in self.events:
             event.before_executor(input)
-        
+
         loss = self.network.fetch_internal_tensor(y)
 
         # map string to tensor input
@@ -73,7 +85,7 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         input_dict[self.is_training] = True
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
-        # Here we provide gradients in numpy form so that we can work on them externally
+        # Read gradients in numpy form
         params = list(self.network.variables.values())
         if y in self.network._gradients:
             grad = self.network._gradients[y]
@@ -83,10 +95,8 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
 
         (grad_names, grad_tensors, _vars) = self.network.get_gradient_names(self.network._gradients[y], y)
 
-        if not self.network.vars_initialized:
-            init = tf.global_variables_initializer()
-            self.session.run(init)
-            self.network.vars_initialized = True
+        if self.setup_done is False:
+            self.setup()
 
         # Add update operators, e.g., updating batch normalization running
         # mean and variance
@@ -120,10 +130,8 @@ class TensorflowGraphExecutor(d5.GraphExecutor):
         input_dict[self.is_training] = is_training
         output_list = self.network.fetch_internal_tensors(self.network.output_names)
 
-        if not self.network.vars_initialized:
-            init = tf.global_variables_initializer()
-            self.session.run(init)
-            self.network.vars_initialized = True
+        if self.setup_done is False:
+            self.setup()
 
         fetches = [op]
         if is_training:
