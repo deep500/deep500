@@ -17,6 +17,14 @@ FIXED = {
     'epochs': 90
 }
 
+
+def weight_decay(name: str, param, grad):
+    if 'bias' in name or len(param.shape) == 1:
+        return grad
+    grad += 1e-4 * param
+    return grad
+
+
 # Mutable Components
 MUTABLE = {
     'batch_size': 64,
@@ -30,7 +38,7 @@ MUTABLE = {
     ]),
     'optimizer': d5fw.MomentumOptimizer,
     'optimizer_args': (0.1, 0.9),
-    'optimizer_kwargs': dict(weight_decay=1e-4),
+    'optimizer_kwargs': dict(gradient_modifier=weight_decay),
     'events': [d5.training_events.EpochHPSchedule(
                     lr=[(0, 1e-1), (81, 1e-2), (122, 1e-3), (164, 1e-4)]),
                d5.training_events.TerminalBarEvent()]
