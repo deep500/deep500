@@ -46,7 +46,7 @@ MUTABLE = {
 
 # Acceptable Metrics
 METRICS = [
-    (d5.TestAccuracy(), 93.0)
+    (d5.TestAccuracy(max_acc=True), 93.0)
 ]
 
 
