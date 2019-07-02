@@ -14,7 +14,7 @@ from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 # ImageNet dataset statistics
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
-_NUM_CLASSES = 1001
+_NUM_CLASSES = 1000
 _NUM_TRAIN_IMAGES = 1281167
 _NUM_VALIDATION_IMAGES = 50000
 _SHUFFLE_BUFFER = 10000
@@ -120,6 +120,7 @@ class TFRecordImageNetSampler(Sampler):
         self.seed = seed
         self.events = events
         self.as_op = False
+        self.cnt = 0
         self.reset()
 
     def as_operator(self):
@@ -136,6 +137,10 @@ class TFRecordImageNetSampler(Sampler):
     def __next__(self):
         if self.as_op:
             return None
+        if self.cnt >= len(self.dataset) // self.batch_size:
+            raise StopIteration
+        self.cnt += 1
+
 
         for event in self.events: event.before_sampling(self, self.batch_size)
         sample = self.dataset[0] # Returns a minibatch in any case
@@ -152,6 +157,7 @@ class TFRecordImageNetSampler(Sampler):
 
     def reset(self):
         self.dataset.reset()
+        self.cnt = 0
 
 
 ########################################################################
@@ -214,7 +220,7 @@ def _parse_example_proto(example_serialized, augment, is_nchw):
                                    'image/object/bbox/ymax']})
 
   features = tf.parse_single_example(example_serialized, feature_map)
-  label = tf.cast(features['image/class/label'], dtype=tf.int32)
+  label = tf.cast(features['image/class/label'], dtype=tf.int64) - 1
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
   ymin = tf.expand_dims(features['image/object/bbox/ymin'].values, 0)
