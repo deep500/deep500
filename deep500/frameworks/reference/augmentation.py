@@ -108,6 +108,26 @@ class Crop(SingleSampleAugmentation):
         return sample, label
 
 
+class Resize(SingleSampleAugmentation):
+    """ Resize an image to a specified size. """
+    def __init__(self,
+                 target_size: Tuple[int, int]):
+        super().__init__()
+        self.target_size = target_size
+
+    def augment_sample(self, sample: np.ndarray, label: np.ndarray):
+        c, h, w = sample.shape
+
+        # Convert back to image (expensive)
+        image = PIL.Image.fromarray(
+            (sample.transpose(1, 2, 0) * 256).astype(np.uint8), 'RGB')
+        resized = image.resize(self.target_size)
+        sample = np.array(resized).astype(sample.dtype) / 256.0
+        sample = sample.transpose(1, 2, 0)
+
+        return sample, label
+
+
 class Normalize(SingleSampleAugmentation):
     """ Normalize samples according to given channel-wise mean/stddev. """
     def __init__(self,

@@ -184,6 +184,19 @@ class PyTorchVisitor(OnnxBaseVisitor):
     def visit_averagepool(self, op: AveragePool, network: PyTorchNetwork):
         self._visit_pool(op, 'AvgPool')
 
+    def visit_globalaveragepool(self, op: AveragePool, network: PyTorchNetwork):
+        # TODO: Use input tensor size to determine dimensionality
+        #in_shape = self._get_shape(op.i_X)
+        in_shape = [0,0,0,0]
+
+        modtyp = getattr(torch.nn, 'AdaptiveAvgPool%dd' % (len(in_shape) - 2), None)
+        if modtyp is None:
+            raise RuntimeError('Unsupported dimensions for global average pool (%d)' %
+                               (len(in_shape) - 2))
+
+        mod = modtyp(1)
+        self._add_computation(mod, op.o_Y, (op.i_X,))
+
     def visit_gemm(self, op: Gemm, network: PyTorchNetwork):
         alpha = op.alpha.value if op.alpha is not None else 1.0
         beta = op.beta.value if op.beta is not None else 0.0
