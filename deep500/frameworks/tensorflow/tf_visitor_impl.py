@@ -495,6 +495,23 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
                       auto_pad=auto_pad)
         network.feed_internal_tensor(op.o_Y, Y)
 
+    def visit_globalaveragepool(self, op: d5.ops.GlobalAveragePool, network: TensorflowNetwork):
+        X = network.fetch_internal_tensor(op.i_X)
+
+        modtyp = getattr(tf.keras.layers,
+                         'GlobalAveragePooling%dD' % (len(X.shape) - 2), None)
+        if modtyp is None:
+            raise RuntimeError('Unsupported dimensions for global average pool'
+                               '(%d)' % (len(X.shape) - 2))
+
+        # ONNX forces channels_first format
+        tfop = modtyp(data_format='channels_first')
+
+        # Spatial mean w.r.t. channel dimensions
+        Y = tfop.apply(X)
+
+        network.feed_internal_tensor(op.o_Y, Y)
+
     def visit_conv(self, op: d5.ops.Conv, network: TensorflowNetwork):
         X, W = network.fetch_internal_tensors([op.i_X, op.i_W])
         bias = op.i_B is not None
