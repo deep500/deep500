@@ -1,5 +1,6 @@
 import os
 import random
+import numpy as np
 from typing import List
 
 from deep500.lv2.dataset import Dataset
@@ -32,6 +33,7 @@ def imagenet_shape(is_nchw=True):
 
 def imagenet_loss():
     return SoftmaxCrossEntropy
+
 
 class TFRecordD500Dataset(Dataset):
     def __init__(self, files: List[str], sample_node: str, label_node: str,
@@ -78,6 +80,33 @@ class TFRecordD500Dataset(Dataset):
     def reset(self):
         self.sess.run(self.record_iter.initializer)
 
+
+class SyntheticDataset(Dataset):
+    """ Creates synthetic data to replace imagenet. """
+    def __init__(self, input_node, label_node, num_images, batch_size,
+                 seed=None):
+        self.length = num_images
+        self.input_node = input_node
+        self.label_node = label_node
+        self.batch_size = batch_size
+        if seed is not None:
+            np.random.seed(seed)
+
+    def __getitem__(self, index):
+        sample = np.random.rand(self.batch_size,
+                                _NUM_CHANNELS,
+                                _DEFAULT_IMAGE_SIZE,
+                                _DEFAULT_IMAGE_SIZE).astype(np.float32)
+        label = np.random.randint(0, _NUM_CLASSES, (self.batch_size,),
+                                  dtype=np.int64)
+        return {self.input_node: sample, self.label_node: label}
+
+    def __len__(self):
+        return self.length
+
+    def reset(self):
+        pass
+
 def load_imagenet(input_node: str, label_node: str, batch_size: int, *args, **kwargs):
     train_sampler = TFRecordImageNetSampler(input_node, label_node, batch_size, *args, **kwargs)
     validation_sampler = TFRecordImageNetSampler(input_node, label_node, batch_size, *args, 
@@ -89,36 +118,47 @@ class TFRecordImageNetSampler(Sampler):
         self,
         sample_node: str, label_node: str,
         batch_size: int,
-        path_to_imagenet: str = None,
+        imagenet_path: str = None,
         is_training: bool = True,
         shuffle: bool = True,
         shuffle_buffer: int = _SHUFFLE_BUFFER,
         augment: bool = True,
         is_nchw: bool = True,
-        seed: int=None,
-        events: List[SamplerEvent] = []
+        synthetic: bool = False,
+        seed: int = None,
+        events: List[SamplerEvent] = None
     ):
         # Create the dataset
-        if path_to_imagenet is None:
+        if synthetic is False and imagenet_path is None:
             if 'IMAGENET_PATH' not in os.environ:
                 raise ValueError('ImageNet path not given and the IMAGENET_PATH'
-                                 ' environment variable is not set')
-            path_to_imagenet = os.environ['IMAGENET_PATH']
+                                 ' environment variable is not set. Please set'
+                                 ' or use synthetic=True')
+            imagenet_path = os.environ['IMAGENET_PATH']
 
-        all_files = os.listdir(path_to_imagenet)
-        if is_training:
-            files = [os.path.join(path_to_imagenet, f) for f in all_files if f.startswith('train-')]
-            num_images = _NUM_TRAIN_IMAGES
+        if synthetic is False:
+            all_files = os.listdir(imagenet_path)
+            if is_training:
+                files = [os.path.join(imagenet_path, f) for f in all_files
+                         if f.startswith('train-')]
+            else:
+                files = [os.path.join(imagenet_path, f) for f in all_files
+                         if f.startswith('validation-')]
+
+        num_images = (_NUM_TRAIN_IMAGES if is_training else
+                      _NUM_VALIDATION_IMAGES)
+
+        if synthetic is True:
+            self.dataset = SyntheticDataset(sample_node, label_node, num_images,
+                                            batch_size, seed)
         else:
-            files = [os.path.join(path_to_imagenet, f) for f in all_files if f.startswith('validation-')]
-            num_images = _NUM_VALIDATION_IMAGES
-
-        self.dataset = TFRecordD500Dataset(files, sample_node, label_node, 
-                                           num_images, batch_size, shuffle,
-                                           shuffle_buffer, augment, is_nchw, seed)
+            self.dataset = TFRecordD500Dataset(files, sample_node, label_node,
+                                               num_images, batch_size, shuffle,
+                                               shuffle_buffer, augment, is_nchw,
+                                               seed)
         self.batch_size = batch_size
         self.seed = seed
-        self.events = events
+        self.events = events or []
         self.as_op = False
         self.cnt = 0
         self.reset()
