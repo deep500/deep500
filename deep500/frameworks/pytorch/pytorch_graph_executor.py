@@ -35,7 +35,8 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
         for name, val in input.items():
             self.model._params[name] = torch.tensor(val).to(self.devname)
 
-        self.model()
+        with torch.no_grad():
+            self.model()
 
         output = {}
         for i, out in enumerate(list(self.network.outputs)):

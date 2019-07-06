@@ -11,7 +11,7 @@ FIXED = {
     'model': 'resnet',
     'model_kwargs': dict(depth=50),
     'dataset': 'imagenet',
-    'dataset_kwargs': dict(batch_size=256), #augment=False),
+    'dataset_kwargs': dict(batch_size=128),
     'epochs': 90
 }
 
@@ -27,7 +27,7 @@ import deep500.frameworks.pytorch as d5fw
 
 # Mutable Components
 MUTABLE = {
-    'batch_size': 256,
+    'batch_size': 128,
     'executor': d5fw.from_model,
     'executor_kwargs': dict(device=d5.GPUDevice()),
     'optimizer': d5fw.MomentumOptimizer,

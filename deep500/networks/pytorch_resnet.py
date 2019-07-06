@@ -282,9 +282,14 @@ def export_resnet(batch_size, depth=50, classes=10, file_path='resnet.onnx',
                   shape=(3, 32, 32)):
     if depth not in _DEPTH_TO_FUNCTION:
         raise ValueError('ResNet depth %d not defined' % depth)
-        
+    
     net = _DEPTH_TO_FUNCTION[depth](classes, shape[0])
     dummy_input = Variable(torch.zeros((batch_size, *shape)))
 
     torch.onnx.export(net, dummy_input, file_path, verbose=False)
+
+    # Free memory
+    del net
+    torch.cuda.empty_cache()
+
     return file_path

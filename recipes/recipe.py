@@ -86,10 +86,11 @@ def run_recipe(fixed: Dict[str, Any],
         else:  # Standard model
             network, input_node, output_node = \
                 d5nt.create_model(comps['model'], batch, *comps['model_args'],
-                                  shape=sample_shape, **comps['model_kwargs'])
+                                  classes=ds_classes, shape=sample_shape, 
+                                  **comps['model_kwargs'])
     else:  # Callable
         network, input_node, output_node = comps['model'](
-            batch, *comps['model_args'], shape=sample_shape,
+            batch, *comps['model_args'], classes=ds_classes, shape=sample_shape,
             **comps['model_kwargs'])
 
     # Add loss function to model
