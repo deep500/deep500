@@ -46,7 +46,7 @@ class TFRecordD500Dataset(Dataset):
             raise ImportError('Cannot use TFRecordDataset without TensorFlow: %s' % str(ex))
 
         # Create a TensorFlow session without consuming GPU memory
-        config = tf.ConfigProto()
+        config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth=True
         self.sess = tf.Session(config=config)
 

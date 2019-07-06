@@ -20,9 +20,11 @@ class PyTorchGraphExecutor(d5.GraphExecutor):
         self.is_training = False
         model.accept(self.visitor, self.network)
         self.model = self.visitor.model.to(self.devname)
+        self.model.eval()
         new_network = PyTorchNativeNetwork(self.model)
         new_network.outputs = self.network.outputs
         self.network = new_network
+        torch.cuda.empty_cache()
 
     def inference(self, input: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         for event in self.events:
