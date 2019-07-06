@@ -3,13 +3,12 @@
     accuracy. """
 
 import deep500 as d5
-import deep500.frameworks.reference as d5ref
 from recipes.recipe import run_recipe
 
 
 # Fixed Components
 FIXED = {
-    'model': create_model,
+    'model': 'resnet',
     'model_kwargs': dict(depth=50),
     'dataset': 'imagenet',
     'dataset_kwargs': dict(batch_size=256), #augment=False),
