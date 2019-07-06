@@ -239,7 +239,7 @@ class PyTorchVisitor(OnnxBaseVisitor):
         network.outputs.add(op.o_output)
 
     def visit_relu(self, op: Relu, network: PyTorchNetwork):
-        mod = torch.nn.ReLU()
+        mod = torch.nn.ReLU(inplace=True)
         self._add_computation(mod, op.o_Y, (op.i_X,))
 
     def visit_softmax(self, op: Softmax, network: PyTorchNetwork):
