@@ -12,7 +12,7 @@ class CsvWriterEvent(RunnerEvent):
         self.test_csv = os.path.join(folder, csv_name + "_" + "test.csv")
         self.train_csv = os.path.join(folder, csv_name + "_" + "train.csv")
 
-    def _to_csv(filename, df):
+    def _to_csv(self, filename, df):
         with open(filename, df) as f:
             if df is None or len(df) == 0:
                 return
