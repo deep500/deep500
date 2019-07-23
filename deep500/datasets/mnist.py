@@ -87,8 +87,8 @@ def _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=True
         test_img = ((test_img - np.min(test_img)) / (np.max(test_img) - np.min(test_img))).astype(np.float32)
 
     # prepare
-    train_lbl = train_lbl.astype(np.int32)
-    test_lbl = test_lbl.astype(np.int32)
+    train_lbl = train_lbl.astype(np.int64)
+    test_lbl = test_lbl.astype(np.int64)
 
     return (NumpyDataset(train_img, data_node_name, train_lbl, label_node_name),
             NumpyDataset(test_img, data_node_name, test_lbl, label_node_name))
