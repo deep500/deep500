@@ -45,7 +45,7 @@ from .lv2.event import (TrainingEvent, OptimizerEvent, SamplerEvent,
                         RunnerEvent, StopTraining)
 
 from .lv2.dataset import Dataset, NumpyDataset
-from .lv2.sampler import Sampler, OrderedSampler, ShuffleSampler, ChoiceSampler
+from .lv2.sampler import Sampler, OrderedSampler, ShuffleSampler, BucketSampler, ChoiceSampler
 from .lv2.optimizer import Optimizer, ThreeStepOptimizer, UpdateRuleOptimizer
 from .lv2.summaries import TrainingStatistics
 
