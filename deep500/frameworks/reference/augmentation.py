@@ -61,8 +61,7 @@ class ReplicateBatch(DataAugmentation):
 
 
 class Crop(SingleSampleAugmentation):
-    """ Random/center image crop augmentation with optional constant
-        padding. """
+    """ Random/center crop augmentation with optional constant padding. """
     def __init__(self,
                  crop_size: Tuple[int, int],
                  resize: bool = False, random_crop: bool = False,
@@ -73,28 +72,33 @@ class Crop(SingleSampleAugmentation):
         self.random_crop = random_crop
         self.padding = padding
         self.fill = fill
+        if self.resize and len(sample.shape) == 2:
+            raise ValueError('Cannot resize non-image sample')
 
     def augment_sample(self, sample: np.ndarray, label: np.ndarray):
-        c, h, w = sample.shape
+        dims = len(sample.shape)
+        shape = sample.shape
+        non_crop_dims = dims - len(self.crop_size)
+        if non_crop_dims < 0:
+            raise ValueError('Cropping too many dimensions')
+        # Define slice without the dimensions to crop
+        slice_ = [slice(None)] * non_crop_dims
 
         # Pad, if specified
         if self.padding is not None:
-            pad_tuple = [(0, 0)] + [(p, p) for p in self.padding]
+            pad_tuple = [(0, 0)] * non_crop_dims + [(p, p) for p in self.padding]
             sample = np.pad(sample, pad_tuple, 'constant',
                             constant_values=self.fill)
-            h += 2*self.padding[0]
-            w += 2*self.padding[1]
-
-        crop_y, crop_x = self.crop_size
+            for i in range(len(self.padding)):
+                shape[-len(self.padding) + i] += 2*self.padding[i]
 
         # Crop
         if self.random_crop:  # Crop randomly
-            y = random.randint(0, h - crop_y)
-            x = random.randint(0, w - crop_x)
+            startp = [random.randint(0, s - c) for s,c in zip(shape, self.crop_size)]
         else:  # Center crop
-            y = h // 2 - crop_y // 2
-            x = w // 2 - crop_x // 2
-        sample = sample[:, y:y + crop_y, x:x + crop_x]
+            startp = [s // 2 - c // 2 for s,c in zip(shape, self.crop_size)]
+        slice_ += [slice(s, s + c) for s, c in zip(startp, self.crop_size)]
+        sample = sample[slice_]
 
         # Resize back, if specified
         if self.resize:
