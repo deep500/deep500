@@ -77,11 +77,11 @@ class Crop(SingleSampleAugmentation):
 
     def augment_sample(self, sample: np.ndarray, label: np.ndarray):
         dims = len(sample.shape)
-        shape = list(sample.shape)
         non_crop_dims = dims - len(self.crop_size)
         if non_crop_dims < 0:
             raise ValueError('Cropping too many dimensions')
         # Define slice without the dimensions to crop
+        shape = list(sample.shape[non_crop_dims:])
         slice_ = [slice(None)] * non_crop_dims
 
         # Pad, if specified
@@ -89,8 +89,8 @@ class Crop(SingleSampleAugmentation):
             pad_tuple = [(0, 0)] * non_crop_dims + [(p, p) for p in self.padding]
             sample = np.pad(sample, pad_tuple, 'constant',
                             constant_values=self.fill)
-            for i in range(len(self.padding)):
-                shape[-len(self.padding) + i] += 2*self.padding[i]
+            for i, pad in enumerate(self.padding):
+                shape[i] += 2 * pad
 
         # Crop
         if self.random_crop:  # Crop randomly
@@ -98,7 +98,7 @@ class Crop(SingleSampleAugmentation):
         else:  # Center crop
             startp = [s // 2 - c // 2 for s,c in zip(shape, self.crop_size)]
         slice_ += [slice(s, s + c) for s, c in zip(startp, self.crop_size)]
-        sample = sample[slice_]
+        sample = sample[tuple(slice_)]
 
         # Resize back, if specified
         if self.resize:
