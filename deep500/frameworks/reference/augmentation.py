@@ -77,7 +77,7 @@ class Crop(SingleSampleAugmentation):
 
     def augment_sample(self, sample: np.ndarray, label: np.ndarray):
         dims = len(sample.shape)
-        shape = sample.shape
+        shape = list(sample.shape)
         non_crop_dims = dims - len(self.crop_size)
         if non_crop_dims < 0:
             raise ValueError('Cropping too many dimensions')
