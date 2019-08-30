@@ -1,3 +1,4 @@
+import argparse
 import torch
 import torch.nn as nn
 from torchvision.models.resnet import model_urls, load_state_dict_from_url
@@ -79,30 +80,35 @@ def ResNet101LSTM(num_classes=101, pretrained=True):
 EPOCHS = 100
 BATCH_SIZE = 4
 
-ds_shape = d5ds.dataset_shape('ucf101')
-ds_classes, sample_shape = ds_shape[0], ds_shape[1:]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, nargs="?", default=None)
+    args = vars(parser.parse_args())
 
-train_set, validation_set = d5ds.load_ucf101('0', 'label', folder='/mnt/data/video',
-                                             normalize=True, max_length=700, skip_frames=10)
+    ds_shape = d5ds.dataset_shape('ucf101')
+    ds_classes, sample_shape = ds_shape[0], ds_shape[1:]
 
-seq_lengths = [av.open(path).streams.video[0].frames for path in train_set.data]
-train_sampler = d5.BucketSampler(train_set, BATCH_SIZE, seq_lengths, max_length=500,
-                                 transformations=[d5ref.Crop((224, 224)),])
-validation_sampler = d5.OrderedSampler(validation_set, BATCH_SIZE,
-                                       transformations=[d5ref.Crop((224, 224)),])
+    train_set, validation_set = d5ds.load_ucf101('0', 'label', folder=args['folder'],
+                                                 normalize=True, max_length=700, skip_frames=10)
 
-model = ResNet50LSTM(num_classes=ds_classes, pretrained=True)
+    seq_lengths = [av.open(path).streams.video[0].frames for path in train_set.data]
+    train_sampler = d5.BucketSampler(train_set, BATCH_SIZE, seq_lengths, max_length=500,
+                                     transformations=[d5ref.Crop((224, 224)),])
+    validation_sampler = d5.OrderedSampler(validation_set, BATCH_SIZE,
+                                           transformations=[d5ref.Crop((224, 224)),])
 
-loss = torch.nn.CrossEntropyLoss()
-executor = d5fw.PyTorchNativeGraphExecutor(model, loss, device=d5.GPUDevice())
-optimizer = d5fw.GradientDescent(executor, 'loss')
+    model = ResNet50LSTM(num_classes=ds_classes, pretrained=True)
 
-METRICS = [
-    d5.TestAccuracy(),
-    d5.WallclockTime(reruns=0, avg_over=1)
-]
+    loss = torch.nn.CrossEntropyLoss()
+    executor = d5fw.PyTorchNativeGraphExecutor(model, loss, device=d5.GPUDevice())
+    optimizer = d5fw.GradientDescent(executor, 'loss')
 
-results = d5.test_training(executor, train_sampler, validation_sampler,
-                           optimizer, EPOCHS, BATCH_SIZE, 'output',
-                           metrics=[m for m in METRICS])
+    METRICS = [
+        d5.TestAccuracy(),
+        d5.WallclockTime(reruns=0, avg_over=1)
+    ]
+
+    results = d5.test_training(executor, train_sampler, validation_sampler,
+                               optimizer, EPOCHS, BATCH_SIZE, 'output',
+                               metrics=[m for m in METRICS])
 
