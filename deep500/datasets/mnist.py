@@ -10,7 +10,7 @@ from deep500.lv2.dataset import Dataset, NumpyDataset
 from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
 
-def download_mnist_and_get_file_paths() -> Dict[str, str]:
+def download_mnist_and_get_file_paths(folder='') -> Dict[str, str]:
     """
     Downloads pytorch_networks from Yann Lecun's website
     :return: paths to the different files
@@ -26,10 +26,10 @@ def download_mnist_and_get_file_paths() -> Dict[str, str]:
 
     sub_folder = '/mnist'
 
-    local_files = real_download(base_url, filenames, sub_folder)
+    local_files = real_download(base_url, filenames, sub_folder, output_dir=folder)
     return local_files
 
-def download_fashion_mnist_and_get_file_paths() -> Dict[str, str]:
+def download_fashion_mnist_and_get_file_paths(folder='') -> Dict[str, str]:
     """
     Downloads pytorch_networks from the Zalando Research AWS
     :return: paths to the different files
@@ -45,7 +45,7 @@ def download_fashion_mnist_and_get_file_paths() -> Dict[str, str]:
 
     sub_folder = '/fashion_mnist'
 
-    local_files = real_download(base_url, filenames, sub_folder)
+    local_files = real_download(base_url, filenames, sub_folder, output_dir=folder)
     return local_files
 
 def mnist_shape():
@@ -93,7 +93,7 @@ def _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=True
     return (NumpyDataset(train_img, data_node_name, train_lbl, label_node_name),
             NumpyDataset(test_img, data_node_name, test_lbl, label_node_name))
 
-def load_mnist(data_node_name, label_node_name, *args, normalize=True, **kwargs) -> Tuple[Dataset, Dataset]:
+def load_mnist(data_node_name, label_node_name, *args, normalize=True, folder='', **kwargs) -> Tuple[Dataset, Dataset]:
     """ Returns the training and testing Dataset objects for MNIST.
         @param data_node_name The graph node name for the data inputs.
         @param label_node_name The graph node name for the ground-truth labels.
@@ -101,10 +101,10 @@ def load_mnist(data_node_name, label_node_name, *args, normalize=True, **kwargs)
         @return A 2-tuple with the training and test datasets.
     """
 
-    downloaded_data = download_mnist_and_get_file_paths()
+    downloaded_data = download_mnist_and_get_file_paths(folder=folder)
     return _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=normalize)
 
-def load_fashion_mnist(data_node_name, label_node_name, *args, normalize=True, **kwargs) -> Tuple[Dataset, Dataset]:
+def load_fashion_mnist(data_node_name, label_node_name, *args, normalize=True, folder='', **kwargs) -> Tuple[Dataset, Dataset]:
     """ Returns the training and testing Dataset objects for Fashion MNIST.
         @param data_node_name The graph node name for the data inputs.
         @param label_node_name The graph node name for the ground-truth labels.
@@ -112,6 +112,6 @@ def load_fashion_mnist(data_node_name, label_node_name, *args, normalize=True, *
         @return A 2-tuple with the training and test datasets.
     """
 
-    downloaded_data = download_fashion_mnist_and_get_file_paths()
+    downloaded_data = download_fashion_mnist_and_get_file_paths(folder=folder)
     return _load_mnist(downloaded_data, data_node_name, label_node_name, normalize=normalize)
 

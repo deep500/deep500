@@ -56,7 +56,6 @@ class GraphModule(nn.Module):
 
 
 class PyTorchVisitor(OnnxBaseVisitor):
-
     def __init__(self):
         self.model = GraphModule()
         self._tensors = {}
@@ -110,6 +109,32 @@ class PyTorchVisitor(OnnxBaseVisitor):
         self._add_computation(
             lambda data, shape: torch.reshape(data, shape.tolist()),
             op.o_reshaped, (op.i_data, op.i_shape))
+
+    def visit_slice(self, op: Slice, network: PyTorchNetwork):
+        self._add_computation(lambda a: a, op.o_output, (op.i_data,))
+        for dim, start, end in zip(op.axes.get_value(), op.starts.get_value(), op.ends.get_value()):
+            self._add_computation(torch.narrow, op.o_output, (op.o_output,))
+
+    def visit_sigmoid(self, op: Sigmoid, network: PyTorchNetwork):
+        self._add_computation(F.sigmoid, op.o_Y, (op.i_X,))
+
+    def visit_tanh(self, op: Tanh, network: PyTorchNetwork):
+        self._add_computation(F.tanh, op.o_output, (op.i_input,))
+
+    def visit_mul(self, op: Mul, network: PyTorchNetwork):
+        self._add_computation(lambda a, b: a * b, op.o_C, (op.i_A, op.i_B))
+
+    def visit_transpose(self, op: Transpose, network: PyTorchNetwork):
+        perm = op.perm.get_value()
+        if len(perm) == 2:
+            self._add_computation(lambda a: a.transpose(*perm), op.o_transposed, (op.i_data,))
+        elif len(perm) > 2:
+            self._add_computation(lambda a: a.permute(*perm), op.o_transposed, (op.i_data,))
+
+    def visit_reducemean(self, op: ReduceMean, network: PyTorchNetwork):
+        axes = op.axes.get_value()
+        keepdims = op.keepdims.get_value()
+        self._add_computation(torch.mean, op.o_reduced, (op.i_data, axes, keepdims==1))
 
     def visit_conv(self, op: Conv, network: PyTorchNetwork):
         kwargs = self.get_conv_base(op)

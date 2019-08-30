@@ -1149,5 +1149,4 @@ class TensorflowVisitor(d5.OnnxBaseVisitor):
 
     def supports_device(self, device_name):
         return False
-        
-        
+

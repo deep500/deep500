@@ -2,6 +2,7 @@ import contextlib
 import sys
 import tarfile
 import os
+import glob
 import tempfile
 from tqdm import tqdm
 from typing import Tuple, List, Dict
@@ -129,6 +130,31 @@ def unzip(local_file):
     print('done!')
     return files
 
+def unrar(local_file):
+    try:
+        import rarfile
+    except (ImportError, ModuleNotFoundError) as ex:
+        raise ImportError('Cannot use unrar without rarfile: %s' % str(ex))
+
+    path = os.path.dirname(os.path.abspath(local_file))
+    print('\nunzipping in path: {}'.format(path))
+
+    rar = rarfile.RarFile(local_file)
+    dir = os.path.join(path, sorted(rar.namelist())[0])
+    namelist = set([f.rstrip('/') for f in glob.glob("{}/**".format(dir), recursive=True)])
+    rar_namelist = set([os.path.join(path, f) for f in rar.namelist()])
+
+    if rar_namelist == namelist:
+        dirs = set([f.rstrip('/') for f in glob.glob("{}/**/".format(dir), recursive=True)])
+        files = list(namelist - dirs)
+    else:
+        files = []
+        for filename in rar.namelist():
+            if not is_file_in_dir(path, filename):
+                rar.extract(filename, path)
+            files.append(path + '/' + filename)
+    print('done!')
+    return files
 
 def real_download(base_url, filenames, sub_folder, output_dir=''):
     if output_dir is None or len(output_dir) == 0:
