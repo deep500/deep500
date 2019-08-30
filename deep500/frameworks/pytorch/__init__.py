@@ -2,7 +2,7 @@
 try:
     import torch.cuda
     torch.cuda.init()
-except RuntimeError:
+except (RuntimeError, AssertionError):
     pass
 
 from .custom_operators.pytorch import custom_op, desc_from_tensor, custom_op_from_native
