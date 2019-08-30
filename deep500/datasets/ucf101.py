@@ -6,19 +6,20 @@ import numpy as np
 
 from deep500.utils.download import real_download, unrar
 from deep500.lv2.dataset import FileListDataset
-from torch.nn import CrossEntropyLoss
+from deep500.utils.onnx_interop.losses import SoftmaxCrossEntropy
 
+# Optionally import PyAV
 try:
     import av
 except (ImportError, ModuleNotFoundError) as ex:
-    raise ImportError('Cannot load ucf101 videos without av: %s' % str(ex))
-
-
+    av = None
+    
+    
 def ucf101_shape():
     return (101, None, 3, 240, 320)
 
 def ucf101_loss():
-    return CrossEntropyLoss
+    return SoftmaxCrossEntropy
 
 def download_ucf101_and_get_file_paths(folder='', split='01'):
     """
@@ -67,11 +68,15 @@ ucf101_std = (0.28261574, 0.27613039, 0.28061599)
 
 class ucf101_loader():
     def __init__(self, normalize=True, max_length=1777, skip_frames=10):
+        if av is None:
+            raise ImportError('Cannot load ucf101 videos without PyAV. Please see '
+                      'https://github.com/mikeboers/PyAV for installation instructions.')
+
         self.normalize = normalize
         self.max_length = max_length
         self.skip_frames = skip_frames
 
-    def _video_loader(self, video_path):
+    def _video_loader(self, video_path):            
         container = av.open(video_path)
         container.streams.video[0].thread_type = 'AUTO'
         _data = [frame.to_ndarray(format='rgb24') for frame in container.decode(video=0)]
