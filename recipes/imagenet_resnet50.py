@@ -3,7 +3,6 @@
     accuracy. """
 
 import deep500 as d5
-from recipes.recipe import run_recipe
 
 
 # Fixed Components
@@ -45,4 +44,4 @@ METRICS = [
 
 
 if __name__ == '__main__':
-    run_recipe(FIXED, MUTABLE, METRICS) or exit(1)
+    d5.run_recipe(FIXED, MUTABLE, METRICS) or exit(1)

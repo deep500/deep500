@@ -3,7 +3,6 @@
 
 import deep500 as d5
 import deep500.frameworks.reference as d5ref
-from recipes.recipe import run_recipe
 
 # Using PyTorch as the framework
 import deep500.frameworks.pytorch as d5fw
@@ -51,4 +50,4 @@ METRICS = [
 
 
 if __name__ == '__main__':
-    run_recipe(FIXED, MUTABLE, METRICS) or exit(1)
+    d5.run_recipe(FIXED, MUTABLE, METRICS) or exit(1)

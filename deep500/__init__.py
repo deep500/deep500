@@ -72,3 +72,8 @@ except (ImportError, ModuleNotFoundError):
     pass  # Proper warnings are printed within imported modules
 
 from .lv3.metrics import CommunicationVolume, MPIProfiling
+
+####################################
+# Benchmarking recipes
+from .recipe import run_recipe
+
