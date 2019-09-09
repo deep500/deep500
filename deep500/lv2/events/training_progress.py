@@ -1,4 +1,5 @@
-from tqdm import tqdm, trange
+from tqdm.auto import tqdm
+
 
 from ..event import RunnerEvent, OptimizerEvent
 from ..summaries import TrainingStatistics
@@ -23,7 +24,7 @@ class TerminalBarEvent(RunnerEvent, OptimizerEvent):
         if num_batches == 0:
             self.bar = tqdm()
         else:
-            self.bar = trange(num_batches)
+            self.bar = tqdm(range(num_batches))
 
         if self._total_epochs < 0:
             self.bar.set_description('Training (epoch %d)' % self._epoch)
@@ -49,7 +50,7 @@ class TerminalBarEvent(RunnerEvent, OptimizerEvent):
         if num_batches == 0:
             self.bar = tqdm()
         else:
-            self.bar = trange(num_batches)
+            self.bar = tqdm(range(num_batches))
 
         self.bar.set_description('Testing')
 
