@@ -33,7 +33,7 @@ class Net(nn.Module):
         x = x.view(-1, self.imw*self.imw*20)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return F.softmax(x, dim=1)
+        return x
 
         
 def export_simple_cnn(batch_size: int, classes=10, shape=(1, 28, 28),
