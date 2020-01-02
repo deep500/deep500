@@ -30,12 +30,14 @@ class AttributeType(Enum):
     STRING = 3
     TENSOR = 4
     GRAPH = 5
+    SPARSE_TENSOR = 11
 
     FLOATS = 6
     INTS = 7
     STRINGS = 8
     TENSORS = 9
     GRAPHS = 10
+    SPARSE_TENSORS = 12
 
 
 class OnnxAttribute(abc.ABC):
@@ -64,6 +66,8 @@ class OnnxAttribute(abc.ABC):
             return OnnxStringsAttribute.create_from_attribute(attribute)
         elif attr_type is AttributeType.TENSOR:
             return OnnxTensorAttribute.create_from_attribute(attribute)
+        elif attr_type is AttributeType.SPARSE_TENSOR:
+            return OnnxSparseTensorAttribute.create_from_attribute(attribute)
         raise Exception("Did not recognize attribute type: {}".format(attr_type))
 
 
@@ -391,7 +395,45 @@ class OnnxTensorAttribute(OnnxAttribute):
     def get_value(self):
         return self.value.get_data()
 
+    
+class OnnxSparseTensor:
+    def __init__(self, values_tensor: OnnxTensor, indices_tensor: OnnxTensor, dims: int, name: Optional[str],
+                 doc_string: Optional[str]):
+        self.dims = dims
+        self.values = values_tensor
+        self.indices = indices_tensor
+        self.name = name
+        self.doc_string = doc_string
+        self.data = data
+        self.data.resize(self.dims)
 
+    def get_data(self):
+        return (self.values.get_data(), self.indices.get_data(), self.dims)
+
+    @staticmethod
+    def create_from_onnx_sparse_tensor(tensor):
+        dims = tuple(tensor.dims)
+        name = tensor.name
+        doc_string = tensor.doc_string
+        values = OnnxTensor.create_from_onnx_tensor(tensor.values)
+        indices = OnnxTensor.create_from_onnx_tensor(tensor.indices)
+        return OnnxSparseTensor(values, indices, dims, name, doc_string)
+
+    
+class OnnxSparseTensorAttribute(OnnxAttribute):
+    def __init__(self, name: str, tensor: OnnxSparseTensor, doc_string: Optional[str] = None):
+        super(OnnxSparseTensorAttribute, self).__init__(name, doc_string)
+        self.value = tensor
+
+    @classmethod
+    def create_from_attribute(cls, attribute):
+        tensor = OnnxSparseTensor.create_from_onnx_sparse_tensor(attribute.sparse_tensor)
+        return cls(attribute.name, tensor, attribute.doc_string)
+
+    def get_value(self):
+        return self.value.get_data()
+
+    
 class OnnxFloatTensor(OnnxTensor):
     def __init__(self, dims: Tuple[int, ...], data: np.ndarray, segment: Optional[Tuple[int, int]],
                  name: Optional[str],
@@ -411,6 +453,7 @@ class OnnxFloatTensor(OnnxTensor):
 
         return cls(dims, data, segment, name, doc_string)
 
+    
 class OnnxDoubleTensor(OnnxTensor):
     def __init__(self, dims: Tuple[int, ...], data: np.ndarray, segment: Optional[Tuple[int, int]],
                  name: Optional[str],
