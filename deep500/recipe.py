@@ -94,8 +94,8 @@ def run_recipe(fixed: Dict[str, Any],
             **comps['model_kwargs'])
 
     # Add loss function to model
-    network.add_operation(loss_op([output_node, 'label'], 'loss'))
-
+    if hasattr(network, 'add_operation'):
+        network.add_operation(loss_op([output_node, 'label'], 'loss'))
     # Construct dataset
     if isinstance(comps['dataset'], str):
         train_set, validation_set = d5ds.load_dataset(
