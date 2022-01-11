@@ -118,7 +118,7 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
             self.is_training = False
         output = self.model(torch.from_numpy(input[self.innode]).to(self.devname))
         if self.loss is not None:
-            y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
+            y_tensor = torch.tensor(input[self.labelnode], dtype=output.dtype,
                                     device=self.devname)
             loss = self.loss(output, y_tensor)
             outputs = {self.outnode: output.detach().cpu().numpy(),
@@ -141,7 +141,7 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
             self.is_training = True
 
         self.model.zero_grad()
-        y_tensor = torch.tensor(input[self.labelnode], dtype=torch.long,
+        y_tensor = torch.tensor(input[self.labelnode], dtype=output.dtype,
                                 device=self.devname)
         output = self.model(torch.from_numpy(input[self.innode]).to(self.devname))
         loss = self.loss(output, y_tensor)
@@ -165,7 +165,7 @@ class PyTorchNativeGraphExecutor(PyTorchGraphExecutor):
             self.is_training = True
 
         self.model.zero_grad()
-        y_tensor = torch.tensor(inputs[self.labelnode], dtype=torch.long,
+        y_tensor = torch.tensor(inputs[self.labelnode], dtype=output.dtype,
                                 device=self.devname)
         output = self.model(torch.from_numpy(inputs[self.innode]).to(self.devname))
         loss = self.loss(output, y_tensor)
