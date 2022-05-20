@@ -1,5 +1,7 @@
 import time
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import deepbench
 
 AVG_OVER = 10

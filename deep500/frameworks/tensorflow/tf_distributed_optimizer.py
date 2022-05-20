@@ -1,7 +1,9 @@
 from deep500.frameworks.tensorflow.tf_optimizers import TFOptimizer
 from deep500.lv3.communication import CommunicationNetwork
 
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 class HorovodDistributedOptimizer(TFOptimizer):
     def __init__(self, optimizer: TFOptimizer, comm=None):

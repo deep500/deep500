@@ -2,8 +2,9 @@ from typing import List
 
 import deep500 as d5
 
-
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 class TensorflowNetwork(d5.Network):

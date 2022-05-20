@@ -1,7 +1,9 @@
 from typing import List, Any
 
 import numpy as np
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 from deep500.lv0.validation.metrics import DefaultOpMetrics
 from deep500.utils.metrics import TestMetric

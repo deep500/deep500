@@ -1,4 +1,7 @@
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 from typing import Union
 
 from deep500.lv2.optimizer import FirstOrderOptimizer

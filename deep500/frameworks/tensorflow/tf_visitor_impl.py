@@ -2,7 +2,9 @@ import itertools
 from functools import partial
 
 import numpy as np
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 import deep500 as d5
 

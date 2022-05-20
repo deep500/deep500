@@ -1,7 +1,9 @@
 # Validates a native TensorFlow operator (here tf.matmul) using a Deep500 
 # Operator.
 import numpy as np
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from deep500.frameworks import tensorflow as d5tf
 
 from deep500.frameworks import reference as d5ref
