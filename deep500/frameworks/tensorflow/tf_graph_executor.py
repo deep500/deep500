@@ -4,7 +4,9 @@ import numpy as np
 
 import deep500 as d5
 
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 from .tf_network import TensorflowNetwork
 from .tf_visitor_impl import TensorflowVisitor

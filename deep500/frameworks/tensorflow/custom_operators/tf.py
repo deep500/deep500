@@ -1,6 +1,8 @@
 import ctypes
 import os
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from tensorflow.python.framework import ops
 import numpy as np
 from typing import List, Union, Type, Dict

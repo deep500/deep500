@@ -1,6 +1,8 @@
 # Trains a native TensorFlow model using a Deep500 executor and a native 
 # optimizer.
-import tensorflow as tf
+# Compatiable tf version for v1
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 
 import deep500 as d5
